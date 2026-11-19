@@ -1,0 +1,115 @@
+/* Project Golu Extension Styles */
+
+.golu-pill-container {
+  position: absolute;
+  z-index: 2147483640;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 1px solid #334155;
+  pointer-events: auto;
+  user-select: none;
+  animation: golu-fade-in 0.15s ease-out;
+}
+
+@keyframes golu-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.golu-pill-badge {
+  font-weight: 700;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.golu-pill-vault {
+  background: #059669;
+  color: #ffffff;
+}
+
+.golu-pill-rag {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.golu-pill-text {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #cbd5e1;
+}
+
+.golu-pill-kbd {
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* Green review glow for batch filled fields */
+.golu-field-highlight {
+  background-color: #ecfdf5 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Active Learning Toast */
+.golu-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: golu-fade-in 0.2s ease-out;
+}
+
+.golu-toast button {
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.golu-toast-save {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.golu-toast-save:hover {
+  background: #059669;
+}
+
+.golu-toast-dismiss {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.golu-toast-dismiss:hover {
+  background: #475569;
+  color: #f8fafc;
+}

@@ -23,7 +23,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Depends, status, Request
+from fastapi import FastAPI, Header, HTTPException, Depends, status, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -249,6 +249,92 @@ def trigger_ingest(
     else:
         bootstrap_memory()
         return {"status": "success", "action": "bootstrap_memory", "total_chunks": rag_store.collection.count()}
+
+
+# ================= WebSocket Manager for Browser & Voice =================
+
+class BrowserWebSocketManager:
+    """Manages connected browser extensions for real-time batch fills and voice triggers."""
+
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logger.info(f"Browser client connected. Total clients: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logger.info(f"Browser client disconnected. Total clients: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                logger.warning(f"Failed to send WS message: {e}")
+                self.disconnect(connection)
+
+
+ws_manager = BrowserWebSocketManager()
+
+
+@app.websocket("/ws/browser")
+async def websocket_browser_endpoint(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # Handle incoming client messages if any
+            if data.get("action") == "PING":
+                await websocket.send_json({"action": "PONG"})
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception as e:
+        logger.debug(f"WS error: {e}")
+        ws_manager.disconnect(websocket)
+
+
+@app.post("/api/trigger-form-fill")
+async def trigger_form_fill(token: str = Depends(verify_golu_token)):
+    """
+    Broadcasts form fill command to active browser extension tabs (used by Voice / Hotkeys).
+    """
+    await ws_manager.broadcast({"action": "FILL_CURRENT_FORM"})
+    return {
+        "status": "success",
+        "action": "FILL_CURRENT_FORM",
+        "active_clients": len(ws_manager.active_connections)
+    }
+
+
+class BatchSuggestRequest(BaseModel):
+    fields: List[FieldSuggestRequest]
+
+
+@app.post("/api/batch-suggest")
+def batch_suggest(
+    req: BatchSuggestRequest,
+    token: str = Depends(verify_golu_token)
+):
+    """
+    Fast batch suggestion endpoint for multi-field forms.
+    Processes fields efficiently with Vault (<5ms) and grounded RAG.
+    """
+    results = []
+    for f in req.fields:
+        res = router.route_field(
+            field_name=f.field_name,
+            field_type=f.field_type,
+            field_label=f.field_label,
+            placeholder=f.placeholder,
+            context=f.context,
+            maxlength=f.maxlength
+        )
+        results.append(res)
+    return {"results": results, "count": len(results)}
 
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ KEY_FALLBACK_FILE = Path(__file__).resolve().parent.parent / "data" / ".vault_ma
 SENSITIVE_DENY_LIST = {
     "password", "passwd", "pwd", "secret", "cvv", "cvc", "otp", "pin",
     "card_number", "credit_card", "debit_card", "expiry", "card_expiry",
-    "aadhaar", "aadhar", "pan_card", "pan_number", "ssn", "social_security",
+    "aadhaar", "aadhar", "pan", "pan_card", "pan_number", "ssn", "social_security",
     "netbanking", "bank_account_pin", "auth_token", "api_key", "secret_key"
 }
 

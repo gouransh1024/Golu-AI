@@ -17,5 +17,7 @@ data/bm25_corpus.json
 
 # Logs & temp
 *.log
+@AutomationLog.txt
+data/vision_cache/
 .DS_Store
 Thumbs.db
