@@ -50,7 +50,7 @@ class GoluOfflineEmbeddingFunction(EmbeddingFunction):
        Zero downloads, zero network calls, sub-millisecond CPU execution, zero GPU VRAM impact.
     """
 
-    def __init__(self, n_features: int = 384, ollama_model: str = "qwen3-embedding:0.6b"):
+    def __init__(self, n_features: int = 384, ollama_model: str = "all-minilm"):
         self.n_features = n_features
         self.ollama_model = ollama_model
         # HashingVectorizer creates deterministic sparse word/n-gram features

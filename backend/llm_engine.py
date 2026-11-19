@@ -25,9 +25,9 @@ from backend.security import security_manager
 
 logger = logging.getLogger("golu.llm")
 
-DEFAULT_MODEL = "qwen3.5:4b"
-FALLBACK_MODEL = "qwen2.5:3b"
-EMBEDDING_MODEL = "qwen3-embedding:0.6b"
+DEFAULT_MODEL = "qwen2.5:1.5b"
+FALLBACK_MODEL = "qwen2.5:0.5b"
+EMBEDDING_MODEL = "all-minilm"
 
 VRAM_CRITICAL_THRESHOLD_MB = 3840  # 3.75 GB
 VRAM_RECOVERY_THRESHOLD_MB = 3480  # 3.40 GB
