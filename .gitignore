@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Project Golu Secrets & Local Databases
+data/.session_token
+data/.vault_master.key
+data/chroma_db/
+data/vault.db
+data/bm25_corpus.json
+
+# Logs & temp
+*.log
+.DS_Store
+Thumbs.db

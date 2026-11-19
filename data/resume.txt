@@ -1,0 +1,51 @@
+GOURAB SAHA
+Bengaluru, Karnataka, India | +91 9876543210 | gourabsaha.dev@gmail.com
+LinkedIn: linkedin.com/in/gourabsaha-dev | GitHub: github.com/gourabsaha | Portfolio: gourabsaha.dev
+
+PROFESSIONAL SUMMARY
+High-performing Full-Stack & AI Systems Engineer with deep expertise in local AI orchestration, low-latency architectures, and memory-constrained edge deployment. Experienced in designing production-grade client-server systems, privacy-preserving zero-cloud architectures, and hardware-constrained GPU pipelines (4GB VRAM optimization). Proven track record of shipping production tools with 99.9% deterministic accuracy.
+
+EDUCATION
+Vellore Institute of Technology (VIT)
+Bachelor of Technology in Computer Science and Engineering | 2021 – 2025
+- Current CGPA: 8.85 / 10.0
+- Coursework: Data Structures & Algorithms, Operating Systems, Database Management Systems, Distributed Systems, Computer Networks, Machine Learning.
+
+TECHNICAL SKILLS
+- Languages: Python, JavaScript, TypeScript, C++, SQL, HTML5/CSS3.
+- AI & ML: Ollama, Faster-Whisper, Silero VAD, Kokoro-82M TTS, ChromaDB, BM25, Sentence-Transformers, HuggingFace, PyTorch.
+- Frameworks & Backends: FastAPI, Uvicorn, WebSockets, PyQt6, React, Node.js, SQLite.
+- Systems & Tools: Windows DPAPI, WASAPI Loopback Audio, UI Automation (UIA), PyAutoGUI, Docker, Git, Linux/PowerShell.
+- Architecture: Zero-Cloud Privacy, Local RAG, Reciprocal Rank Fusion (RRF), Finite State Machines (FSM), Manifest V3 Browser Extensions.
+
+FEATURED PROJECTS
+1. Project Golu: Production-Grade Zero-Cloud Local AI Agent (4GB VRAM Edition)
+- Engineered a zero-cloud, local client-server AI system running entirely on a 4GB VRAM GPU without cloud reliance or API fees.
+- Partitioned compute: Unified LLM (Qwen 4B) on GPU (2.6-3.3 GB VRAM); Multilingual RAG, Whisper STT, and Kokoro TTS on CPU.
+- Built a 3-tier browser and desktop automation engine: Tier 1 Manifest V3 extension, Tier 2 Windows UI Automation, Tier 3 Vision fallback.
+- Implemented defense-in-depth security: Windows DPAPI master key encryption (AES-256 Fernet), rotating X-Golu-Token authentication, and XML prompt-injection firewall.
+- Designed an undetectable meeting co-pilot HUD with driver-level WASAPI loopback audio capture and Windows WDA_EXCLUDEFROMCAPTURE screen-share invisibility.
+
+2. Distributed Key-Value Store with Raft Consensus
+- Implemented a fault-tolerant distributed key-value storage engine in C++ utilizing the Raft consensus algorithm.
+- Achieved sub-millisecond P99 tail latency for concurrent read/write transactions across a 5-node cluster.
+- Implemented log compaction, snapshotting, and dynamic membership reconfiguration under network partitions.
+
+3. Edge AI Real-Time Telemetry & Anomaly Detection Gateway
+- Developed an edge IoT telemetry gateway in Python and FastAPI that monitors industrial sensor streams in real time.
+- Integrated lightweight statistical and isolation forest models to detect anomalous sensor drift within 15 milliseconds.
+- Streamed live anomaly alerts to an interactive dashboard over full-duplex WebSockets.
+
+PROFESSIONAL EXPERIENCE
+TechInnovate Labs | AI Systems Engineering Intern
+Jan 2024 – Jun 2024 | Bengaluru, India
+- Architected and deployed lightweight local inference pipelines for edge hardware, optimizing Q4_K_M model quantization.
+- Reduced inference memory footprint by 38% and elevated sustained token generation throughput by 42%.
+- Engineered hybrid semantic search combining dense vector embeddings with BM25 keyword retrieval using Reciprocal Rank Fusion.
+- Collaborated with senior engineers to implement DPAPI credential isolation and hardened localhost API endpoints against CSRF and DNS rebinding attacks.
+
+HONORS & CERTIFICATIONS
+- Winner, National HackIndia Innovation Challenge 2024 (1st place out of 450+ teams).
+- AWS Certified Cloud Practitioner (2024).
+- Top 5% Global Rank on LeetCode (Rating 1850+, 350+ DSA problems solved in C++ and Python).
+- Published technical research paper on "Memory-Aware Quantization Strategies for Edge LLM Inference".
