@@ -82,6 +82,19 @@ class GoluAssistant:
                 "latency_ms": 1.0
             }
 
+        # Personal Identity Fast-Path
+        if any(p in lower_q for p in ["who am i", "mera naam kya hai", "what is my name", "tell me my name", "what's my name", "who am i?"]):
+            name_val = vault_sql.get_value("full_name") or "Gourab Saha"
+            college_val = vault_sql.get_value("university") or "Vellore Institute of Technology"
+            branch_val = vault_sql.get_value("major_branch") or "Computer Science and Engineering"
+            return {
+                "query": clean_q,
+                "answer": f"Aapka naam {name_val} hai! Aap {college_val} se {branch_val} ke student aur developer ho.",
+                "source": "vault",
+                "confidence": 1.0,
+                "latency_ms": 1.0
+            }
+
         has_search_intent = any(k in lower_q for k in SEARCH_INTENT_KEYWORDS)
 
         # Tier 1: Check Deterministic Vault (Personal profile / credentials lookup)

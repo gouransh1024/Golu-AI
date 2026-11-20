@@ -31,20 +31,21 @@ DEFAULT_PROFILE_SEED = [
         "category": "personal",
         "aliases": [
             "full name", "your name", "name", "candidate name", "applicant name",
-            "student name", "naam", "pura naam", "apna naam"
+            "student name", "naam", "pura naam", "apna naam", "my name", "mera naam",
+            "who am i", "my full name", "mera pura naam", "user name", "about me", "my identity"
         ]
     },
     {
         "key": "first_name",
         "value": "Gourab",
         "category": "personal",
-        "aliases": ["first name", "given name", "first_name", "pehla naam"]
+        "aliases": ["first name", "given name", "first_name", "pehla naam", "my first name", "mera pehla naam"]
     },
     {
         "key": "last_name",
         "value": "Saha",
         "category": "personal",
-        "aliases": ["last name", "surname", "family name", "last_name", "upnaam"]
+        "aliases": ["last name", "surname", "family name", "last_name", "upnaam", "my last name", "mera last name", "my surname"]
     },
     {
         "key": "email",
@@ -52,7 +53,7 @@ DEFAULT_PROFILE_SEED = [
         "category": "contact",
         "aliases": [
             "email", "email address", "e-mail", "email id", "mail id",
-            "contact email", "primary email", "apna email"
+            "contact email", "primary email", "apna email", "my email", "mera email", "my email id", "mera email id"
         ]
     },
     {
@@ -62,7 +63,7 @@ DEFAULT_PROFILE_SEED = [
         "aliases": [
             "phone", "phone number", "mobile", "mobile number", "contact number",
             "phone no", "mobile no", "cell phone", "telephone", "calling number",
-            "apna phone", "contact no", "whatsapp number", "whatsapp no"
+            "apna phone", "contact no", "whatsapp number", "whatsapp no", "my phone", "mera phone", "my number", "mera number"
         ]
     },
     {
@@ -71,8 +72,7 @@ DEFAULT_PROFILE_SEED = [
         "category": "education",
         "aliases": [
             "university", "college", "institute", "college name", "university name",
-            "institution name", "alma mater", "school/college", "college ka naam",
-            "university ka naam"
+            "institution name", "alma mater", "school/college", "my college", "my university", "mera college", "mera university"
         ]
     },
     {
@@ -237,6 +237,25 @@ class VaultSQL:
         # Seed defaults if database is newly initialized
         if self._is_empty():
             self.seed_defaults()
+        else:
+            self.sync_seed_aliases()
+
+    def sync_seed_aliases(self):
+        """Ensures all aliases from DEFAULT_PROFILE_SEED exist in the database."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            for item in DEFAULT_PROFILE_SEED:
+                norm_key = item["key"].strip().lower()
+                all_aliases = {norm_key.replace("_", " "), norm_key}
+                for a in item.get("aliases", []):
+                    all_aliases.add(a.strip().lower())
+                for a in all_aliases:
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO aliases (canonical_key, alias)
+                        VALUES (?, ?)
+                    """, (norm_key, a))
+            conn.commit()
+        self._refresh_cache()
 
     def _is_empty(self) -> bool:
         with self._get_connection() as conn:
@@ -338,7 +357,17 @@ class VaultSQL:
 
         # If no exact match, compute fuzzy score with length-aware specificity
         if best_score < 1.0:
+            query_has_name = any(w in clean_query for w in ["name", "naam", "who am i", "pehchaan"])
+            query_has_edu = any(w in clean_query for w in ["college", "university", "institute", "school", "alma mater"])
+
             for alias, can_key, enc_val in rows:
+                # Disallow cross-category contamination: if query is about person name, don't match education university
+                if query_has_name and not query_has_edu and can_key in ("university", "degree", "major_branch"):
+                    continue
+                # If query is about education, don't match personal name
+                if query_has_edu and not query_has_name and can_key in ("full_name", "first_name", "last_name"):
+                    continue
+
                 score_w = fuzz.WRatio(clean_query, alias) / 100.0
 
                 len_ratio = len(alias) / max(len(clean_query), 1)

@@ -1,25 +1,29 @@
-"""Project Golu: Floating Siri-Like Interactive Voice Assistant HUD (PyQt6).
-Modern, translucent glassmorphism widget that pops up like Siri/Cortana on Windows:
-- Floating pill/card with glowing pulse animation when listening
-- Real-time display of user's speech transcript
-- Formatted presentation of Golu's answer (Vault, RAG, Web Search, Brain)
-- Interactive controls: Mic trigger, Open Web Dashboard, Emergency Stop
-- Draggable, stays on top, rounded glassmorphic styling
+"""Project Golu: Expandable Floating Logo & Siri Chat Window (PyQt6).
+Features:
+- Collapsed Mode: Cute, compact 64x64 floating circular Golu logo that sits on screen with a glowing ambient pulse
+- Expanded Mode: Rich 380x480 glassmorphism chat window with message history, text typing, voice mic, and dashboard links
+- Seamless toggle: Click logo or press [Ctrl+Alt+A] to expand; click minimize button to collapse back to logo
+- Text + Voice dual-input: Type and press Enter to chat silently, or click the mic / say 'Hey Golu' to speak!
+- Modern dark translucent glassmorphism, draggable anywhere, always-on-top
 """
 
 import sys
 import os
 import webbrowser
 import logging
+import threading
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QPoint
-from PyQt6.QtGui import QFont, QColor, QPainter, QBrush, QPen, QLinearGradient
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QPoint, QSize
+from PyQt6.QtGui import QFont, QColor, QPainter, QBrush, QPen, QLinearGradient, QPainterPath
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QFrame, QGraphicsDropShadowEffect,
-    QProgressBar, QScrollArea
+    QLineEdit, QScrollArea, QStackedLayout
 )
+
+from backend.assistant import assistant
+from backend.audio.golu_voice import voice_engine
 
 logger = logging.getLogger("golu.siri_hud")
 
@@ -28,9 +32,11 @@ class SiriHUDCommunicator(QObject):
     """Bridge for cross-thread communication to the Siri HUD."""
     show_signal = pyqtSignal()
     hide_signal = pyqtSignal()
-    listening_signal = pyqtSignal(str)   # Status text e.g. "Listening..."
-    transcript_signal = pyqtSignal(str)  # User question e.g. "What is quantum computing?"
-    answer_signal = pyqtSignal(str, str) # (Answer text, source e.g. "internet_search")
+    expand_signal = pyqtSignal()
+    collapse_signal = pyqtSignal()
+    listening_signal = pyqtSignal(str)
+    transcript_signal = pyqtSignal(str)
+    answer_signal = pyqtSignal(str, str) # (answer, source)
     close_signal = pyqtSignal()
 
 
@@ -39,11 +45,12 @@ siri_communicator = SiriHUDCommunicator()
 
 
 class FloatingSiriHUD(QWidget):
-    """Floating Siri-like glassmorphic voice assistant window."""
+    """Floating Logo & Siri Chat Window for Project Golu."""
 
     def __init__(self, communicator: Optional[SiriHUDCommunicator] = None):
         super().__init__()
         self.comm = communicator or siri_communicator
+        self.is_expanded = False
         self._drag_pos = None
         self._pulse_step = 0
         self._is_listening = False
@@ -52,7 +59,7 @@ class FloatingSiriHUD(QWidget):
         self._setup_ui()
         self._connect_signals()
 
-        # Pulse timer for animated glowing Siri orb
+        # Pulse timer for glowing ring
         self.pulse_timer = QTimer(self)
         self.pulse_timer.timeout.connect(self._animate_pulse)
         self.pulse_timer.start(50)
@@ -65,189 +72,344 @@ class FloatingSiriHUD(QWidget):
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.resize(520, 280)
-        self.setMinimumSize(460, 240)
+        self.resize(72, 72)
 
-        # Center horizontally at the bottom of the screen
+        # Position near bottom right
         screen = QApplication.primaryScreen()
         if screen:
-            screen_geo = screen.availableGeometry()
-            x = (screen_geo.width() - self.width()) // 2
-            y = screen_geo.height() - self.height() - 40
-            self.move(x, y)
+            geo = screen.availableGeometry()
+            self.move(geo.width() - 100, geo.height() - 120)
 
     def _setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(4, 4, 4, 4)
 
-        # Outer Glass Container
-        self.container = QFrame(self)
-        self.container.setObjectName("siriContainer")
-        self.container.setStyleSheet("""
-            QFrame#siriContainer {
-                background: rgba(11, 17, 32, 0.95);
-                border: 2px solid rgba(56, 189, 248, 0.5);
-                border-radius: 20px;
+        self.stacked_layout = QStackedLayout()
+        self.main_layout.addLayout(self.stacked_layout)
+
+        # ================= VIEW 0: MINI FLOATING LOGO =================
+        self.logo_widget = QFrame(self)
+        self.logo_widget.setObjectName("logoFrame")
+        self.logo_widget.setFixedSize(64, 64)
+        self.logo_widget.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logo_widget.setStyleSheet("""
+            QFrame#logoFrame {
+                background: qradialgradient(cx:0.5, cy:0.5, radius:0.5, fx:0.3, fy:0.3, stop:0 #38bdf8, stop:0.8 #0284c7, stop:1 #0f172a);
+                border: 2px solid #38bdf8;
+                border-radius: 32px;
             }
         """)
 
-        # Drop shadow effect
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(30)
-        shadow.setColor(QColor(0, 0, 0, 220))
-        shadow.setOffset(0, 10)
-        self.container.setGraphicsEffect(shadow)
+        logo_layout = QVBoxLayout(self.logo_widget)
+        logo_layout.setContentsMargins(0, 0, 0, 0)
+        self.logo_icon_label = QLabel("✨", self.logo_widget)
+        self.logo_icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.logo_icon_label.setStyleSheet("font-size: 24px; color: white;")
+        logo_layout.addWidget(self.logo_icon_label)
 
-        container_layout = QVBoxLayout(self.container)
-        container_layout.setContentsMargins(18, 14, 18, 14)
-        container_layout.setSpacing(10)
+        # Drop shadow for logo
+        logo_shadow = QGraphicsDropShadowEffect(self)
+        logo_shadow.setBlurRadius(20)
+        logo_shadow.setColor(QColor(56, 189, 248, 160))
+        logo_shadow.setOffset(0, 4)
+        self.logo_widget.setGraphicsEffect(logo_shadow)
 
-        # Header bar
+        self.stacked_layout.addWidget(self.logo_widget)
+
+        # ================= VIEW 1: EXPANDED CHAT WINDOW =================
+        self.chat_widget = QFrame(self)
+        self.chat_widget.setObjectName("chatFrame")
+        self.chat_widget.setStyleSheet("""
+            QFrame#chatFrame {
+                background: rgba(11, 17, 32, 0.96);
+                border: 2px solid rgba(56, 189, 248, 0.6);
+                border-radius: 18px;
+            }
+        """)
+
+        chat_shadow = QGraphicsDropShadowEffect(self)
+        chat_shadow.setBlurRadius(25)
+        chat_shadow.setColor(QColor(0, 0, 0, 220))
+        chat_shadow.setOffset(0, 8)
+        self.chat_widget.setGraphicsEffect(chat_shadow)
+
+        chat_layout = QVBoxLayout(self.chat_widget)
+        chat_layout.setContentsMargins(14, 12, 14, 12)
+        chat_layout.setSpacing(8)
+
+        # Top Header Bar
         header_layout = QHBoxLayout()
-        header_layout.setSpacing(10)
+        header_layout.setSpacing(6)
 
-        # Siri Orb Icon indicator
-        self.orb_label = QLabel("✨", self.container)
-        self.orb_label.setStyleSheet("font-size: 18px;")
+        header_icon = QLabel("✨", self.chat_widget)
+        header_icon.setStyleSheet("font-size: 16px;")
 
-        self.title_label = QLabel("GOLU VOICE ASSISTANT", self.container)
+        self.title_label = QLabel("GOLU AI", self.chat_widget)
         self.title_label.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         self.title_label.setStyleSheet("color: #38bdf8; letter-spacing: 1.5px;")
 
-        self.badge_label = QLabel("IDLE", self.container)
+        self.badge_label = QLabel("READY", self.chat_widget)
         self.badge_label.setStyleSheet("""
             background: rgba(56, 189, 248, 0.2);
             color: #38bdf8;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
             border: 1px solid rgba(56, 189, 248, 0.4);
         """)
 
-        header_layout.addWidget(self.orb_label)
+        header_layout.addWidget(header_icon)
         header_layout.addWidget(self.title_label)
         header_layout.addWidget(self.badge_label)
         header_layout.addStretch()
 
         # Dashboard Button
-        self.btn_dashboard = QPushButton("📊 Dashboard", self.container)
-        self.btn_dashboard.setStyleSheet("""
+        btn_dash = QPushButton("📊", self.chat_widget)
+        btn_dash.setToolTip("Open Web Dashboard")
+        btn_dash.setStyleSheet("""
             QPushButton {
                 background: rgba(56, 189, 248, 0.15);
                 color: #38bdf8;
-                border: 1px solid rgba(56, 189, 248, 0.4);
-                border-radius: 8px;
-                padding: 4px 10px;
-                font-size: 11px;
-                font-weight: 600;
+                border: 1px solid rgba(56, 189, 248, 0.3);
+                border-radius: 6px;
+                padding: 2px 6px;
+                font-size: 12px;
             }
-            QPushButton:hover {
-                background: rgba(56, 189, 248, 0.35);
-                color: #ffffff;
-            }
+            QPushButton:hover { background: rgba(56, 189, 248, 0.35); }
         """)
-        self.btn_dashboard.clicked.connect(self._open_dashboard)
+        btn_dash.clicked.connect(lambda: webbrowser.open("http://127.0.0.1:8000/dashboard"))
+        header_layout.addWidget(btn_dash)
 
-        # Close Button
-        self.btn_close = QPushButton("✕", self.container)
-        self.btn_close.setStyleSheet("""
+        # Minimize to Logo Button
+        btn_min = QPushButton("🗕", self.chat_widget)
+        btn_min.setToolTip("Minimize to Golu Logo")
+        btn_min.setStyleSheet("""
             QPushButton {
                 background: transparent;
                 color: #94a3b8;
                 border: none;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 2px 6px;
+                font-size: 13px;
+                padding: 2px 4px;
             }
-            QPushButton:hover {
-                color: #f87171;
-            }
+            QPushButton:hover { color: #38bdf8; }
         """)
-        self.btn_close.clicked.connect(self.hide)
+        btn_min.clicked.connect(self.collapse_to_logo)
+        header_layout.addWidget(btn_min)
 
-        header_layout.addWidget(self.btn_dashboard)
-        header_layout.addWidget(self.btn_close)
-        container_layout.addLayout(header_layout)
-
-        # Transcript Box (User's Question)
-        self.transcript_label = QLabel("Say 'Hey Golu' or press [Ctrl+Alt+A] to talk...", self.container)
-        self.transcript_label.setFont(QFont("Segoe UI", 12, QFont.Weight.Medium))
-        self.transcript_label.setStyleSheet("color: #e2e8f0; padding: 4px 0;")
-        self.transcript_label.setWordWrap(True)
-        container_layout.addWidget(self.transcript_label)
-
-        # Answer Box (Golu's Response)
-        self.answer_label = QLabel("I'm ready. Ask me anything, search the internet, or fill your forms!", self.container)
-        self.answer_label.setFont(QFont("Segoe UI", 11))
-        self.answer_label.setStyleSheet("""
-            color: #94a3b8;
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 10px;
-            padding: 8px 12px;
-            border: 1px solid rgba(148, 163, 184, 0.15);
-        """)
-        self.answer_label.setWordWrap(True)
-        container_layout.addWidget(self.answer_label)
-
-        # Bottom Bar: Status + Mic Control + Stop Button
-        bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(10)
-
-        self.status_label = QLabel("Ready • Mic Active", self.container)
-        self.status_label.setStyleSheet("color: #64748b; font-size: 11px;")
-        bottom_layout.addWidget(self.status_label)
-        bottom_layout.addStretch()
-
-        # Mic Trigger Button
-        self.btn_mic = QPushButton("🎤 Talk to Golu", self.container)
-        self.btn_mic.setStyleSheet("""
+        # Close Button
+        btn_close = QPushButton("✕", self.chat_widget)
+        btn_close.setToolTip("Hide Golu")
+        btn_close.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #06b6d4);
-                color: #ffffff;
+                background: transparent;
+                color: #94a3b8;
+                border: none;
+                font-size: 13px;
+                padding: 2px 4px;
+            }
+            QPushButton:hover { color: #f87171; }
+        """)
+        btn_close.clicked.connect(self.hide)
+        header_layout.addWidget(btn_close)
+
+        chat_layout.addLayout(header_layout)
+
+        # Message Scroll Area
+        self.scroll_area = QScrollArea(self.chat_widget)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                width: 6px;
+                background: transparent;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(148, 163, 184, 0.3);
+                border-radius: 3px;
+            }
+        """)
+
+        self.messages_container = QWidget()
+        self.messages_container.setStyleSheet("background: transparent;")
+        self.messages_layout = QVBoxLayout(self.messages_container)
+        self.messages_layout.setContentsMargins(2, 2, 2, 2)
+        self.messages_layout.setSpacing(8)
+        self.messages_layout.addStretch()
+
+        self.scroll_area.setWidget(self.messages_container)
+        chat_layout.addWidget(self.scroll_area)
+
+        # Add initial greeting message
+        self.add_message_bubble("Namaste! Main Golu hoon. You can chat here or speak anytime!", is_user=False, source="GOLU")
+
+        # Bottom Input & Action Bar
+        bottom_bar = QHBoxLayout()
+        bottom_bar.setSpacing(6)
+
+        # Text input box for writing and chatting
+        self.text_input = QLineEdit(self.chat_widget)
+        self.text_input.setPlaceholderText("Type a message or question...")
+        self.text_input.setStyleSheet("""
+            QLineEdit {
+                background: rgba(15, 23, 42, 0.8);
+                color: #f8fafc;
+                border: 1px solid rgba(56, 189, 248, 0.35);
+                border-radius: 10px;
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #38bdf8;
+                background: rgba(15, 23, 42, 0.95);
+            }
+        """)
+        self.text_input.returnPressed.connect(self._handle_text_send)
+        bottom_bar.addWidget(self.text_input)
+
+        # Send Button
+        btn_send = QPushButton("➤", self.chat_widget)
+        btn_send.setToolTip("Send Message (Enter)")
+        btn_send.setStyleSheet("""
+            QPushButton {
+                background: #0284c7;
+                color: white;
                 border: none;
                 border-radius: 10px;
-                padding: 6px 14px;
-                font-size: 12px;
-                font-weight: 600;
+                padding: 6px 10px;
+                font-size: 13px;
+                font-weight: bold;
             }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0369a1, stop:1 #0891b2);
-            }
+            QPushButton:hover { background: #0369a1; }
         """)
-        self.btn_mic.clicked.connect(self._trigger_mic)
-        bottom_layout.addWidget(self.btn_mic)
+        btn_send.clicked.connect(self._handle_text_send)
+        bottom_bar.addWidget(btn_send)
 
-        # Stop Golu Button
-        self.btn_stop = QPushButton("⏹️ Stop Golu", self.container)
-        self.btn_stop.setStyleSheet("""
+        # Mic Button
+        self.btn_mic = QPushButton("🎤", self.chat_widget)
+        self.btn_mic.setToolTip("Speak to Golu (Ctrl+Alt+A)")
+        self.btn_mic.setStyleSheet("""
             QPushButton {
-                background: rgba(239, 68, 68, 0.15);
-                color: #f87171;
-                border: 1px solid rgba(239, 68, 68, 0.35);
+                background: rgba(56, 189, 248, 0.2);
+                color: #38bdf8;
+                border: 1px solid rgba(56, 189, 248, 0.4);
                 border-radius: 10px;
-                padding: 6px 12px;
-                font-size: 12px;
-                font-weight: 600;
+                padding: 6px 10px;
+                font-size: 13px;
             }
             QPushButton:hover {
-                background: rgba(239, 68, 68, 0.3);
-                color: #ffffff;
+                background: rgba(56, 189, 248, 0.4);
+                color: white;
             }
         """)
-        self.btn_stop.clicked.connect(self._stop_golu)
-        bottom_layout.addWidget(self.btn_stop)
+        self.btn_mic.clicked.connect(self._trigger_voice)
+        bottom_bar.addWidget(self.btn_mic)
 
-        container_layout.addLayout(bottom_layout)
-        main_layout.addWidget(self.container)
+        chat_layout.addLayout(bottom_bar)
+        self.stacked_layout.addWidget(self.chat_widget)
 
     def _connect_signals(self):
         self.comm.show_signal.connect(self._on_show)
         self.comm.hide_signal.connect(self.hide)
+        self.comm.expand_signal.connect(self.expand_to_chat)
+        self.comm.collapse_signal.connect(self.collapse_to_logo)
         self.comm.listening_signal.connect(self._on_listening)
         self.comm.transcript_signal.connect(self._on_transcript)
         self.comm.answer_signal.connect(self._on_answer)
         self.comm.close_signal.connect(self.close)
+
+    def expand_to_chat(self):
+        """Expands from logo into the chat window."""
+        self.is_expanded = True
+        self.stacked_layout.setCurrentIndex(1)
+        self.resize(380, 480)
+        self.text_input.setFocus()
+
+    def collapse_to_logo(self):
+        """Collapses back into the small 64x64 floating logo."""
+        self.is_expanded = False
+        self.stacked_layout.setCurrentIndex(0)
+        self.resize(72, 72)
+
+    def add_message_bubble(self, text: str, is_user: bool, source: str = ""):
+        """Adds a modern styled message bubble into the chat area."""
+        bubble_frame = QFrame(self.messages_container)
+        bubble_layout = QVBoxLayout(bubble_frame)
+        bubble_layout.setContentsMargins(10, 8, 10, 8)
+        bubble_layout.setSpacing(3)
+
+        if is_user:
+            bubble_frame.setStyleSheet("""
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0ea5e9);
+                border-radius: 12px;
+                border-bottom-right-radius: 2px;
+            """)
+            msg_label = QLabel(text, bubble_frame)
+            msg_label.setStyleSheet("color: #ffffff; font-size: 12px;")
+            msg_label.setWordWrap(True)
+            bubble_layout.addWidget(msg_label)
+
+            row = QHBoxLayout()
+            row.addStretch()
+            row.addWidget(bubble_frame)
+            self.messages_layout.addLayout(row)
+        else:
+            bubble_frame.setStyleSheet("""
+                background: rgba(30, 41, 59, 0.75);
+                border: 1px solid rgba(56, 189, 248, 0.25);
+                border-radius: 12px;
+                border-bottom-left-radius: 2px;
+            """)
+            if source:
+                src_label = QLabel(f"• {source.upper()}", bubble_frame)
+                src_label.setStyleSheet("color: #38bdf8; font-size: 9px; font-weight: bold;")
+                bubble_layout.addWidget(src_label)
+
+            msg_label = QLabel(text, bubble_frame)
+            msg_label.setStyleSheet("color: #f1f5f9; font-size: 12px;")
+            msg_label.setWordWrap(True)
+            bubble_layout.addWidget(msg_label)
+
+            row = QHBoxLayout()
+            row.addWidget(bubble_frame)
+            row.addStretch()
+            self.messages_layout.addLayout(row)
+
+        # Auto-scroll to bottom
+        QTimer.singleShot(50, lambda: self.scroll_area.verticalScrollBar().setValue(
+            self.scroll_area.verticalScrollBar().maximum()
+        ))
+
+    def _handle_text_send(self):
+        """Dispatches typed message to Assistant in background."""
+        text = self.text_input.text().strip()
+        if not text:
+            return
+        self.text_input.clear()
+        self.add_message_bubble(text, is_user=True)
+        self.badge_label.setText("THINKING")
+
+        def worker():
+            res = assistant.ask(text, allow_web_search=True)
+            ans = res.get("answer", "")
+            src = res.get("source", "brain")
+            # Update chat
+            self.comm.answer_signal.emit(ans, src)
+            # Speak with natural Indian neural voice
+            voice_engine.speak(ans)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _trigger_voice(self):
+        """Triggers live voice recording."""
+        try:
+            from backend.state_machine import state_machine
+            state_machine.on_hotkey_assistant()
+        except Exception as e:
+            logger.error("Error triggering mic: %s", e)
 
     def _on_show(self):
         self.show()
@@ -256,97 +418,69 @@ class FloatingSiriHUD(QWidget):
 
     def _on_listening(self, msg: str):
         self._is_listening = True
+        self.expand_to_chat()
         self.show()
         self.badge_label.setText("LISTENING")
         self.badge_label.setStyleSheet("""
             background: rgba(234, 179, 8, 0.2);
             color: #facc15;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
             border: 1px solid rgba(234, 179, 8, 0.4);
         """)
-        self.status_label.setText(msg or "Listening for your voice...")
-        self.transcript_label.setText("Listening...")
-        self.answer_label.setText("Speak now...")
 
     def _on_transcript(self, text: str):
+        self.expand_to_chat()
         self.show()
+        self.add_message_bubble(text, is_user=True)
         self.badge_label.setText("THINKING")
         self.badge_label.setStyleSheet("""
             background: rgba(192, 132, 252, 0.2);
             color: #c084fc;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
             border: 1px solid rgba(192, 132, 252, 0.4);
         """)
-        self.transcript_label.setText(f"You: \"{text}\"")
-        self.status_label.setText("Thinking & searching...")
 
     def _on_answer(self, answer: str, source: str):
         self._is_listening = False
+        self.expand_to_chat()
         self.show()
-        source_display = {
-            "vault": "VAULT (<5ms)",
-            "rag": "RESUME RAG",
-            "internet_search": "WEB SEARCH",
-            "local_llm": "CORE BRAIN"
-        }.get(source, source.upper())
-
-        self.badge_label.setText(source_display)
+        self.badge_label.setText("ANSWERED")
         self.badge_label.setStyleSheet("""
             background: rgba(52, 211, 153, 0.2);
             color: #34d399;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
             border: 1px solid rgba(52, 211, 153, 0.4);
         """)
-        self.answer_label.setText(f"Golu: {answer}")
-        self.status_label.setText(f"Answered via {source_display}")
+        self.add_message_bubble(answer, is_user=False, source=source)
 
     def _animate_pulse(self):
-        """Creates dynamic Siri-like glowing pulse around the container border."""
-        if self._is_listening:
-            self._pulse_step = (self._pulse_step + 1) % 40
-            alpha = int(120 + 80 * (self._pulse_step / 40.0 if self._pulse_step < 20 else (40 - self._pulse_step) / 20.0))
-            self.container.setStyleSheet(f"""
-                QFrame#siriContainer {{
-                    background: rgba(11, 17, 32, 0.95);
+        """Pulsates the glowing border when listening or idle."""
+        self._pulse_step = (self._pulse_step + 1) % 40
+        if not self.is_expanded:
+            # Pulsing floating logo
+            alpha = int(140 + 100 * (self._pulse_step / 40.0 if self._pulse_step < 20 else (40 - self._pulse_step) / 20.0))
+            self.logo_widget.setStyleSheet(f"""
+                QFrame#logoFrame {{
+                    background: qradialgradient(cx:0.5, cy:0.5, radius:0.5, fx:0.3, fy:0.3, stop:0 #38bdf8, stop:0.8 #0284c7, stop:1 #0f172a);
                     border: 2px solid rgba(56, 189, 248, {alpha / 255.0:.2f});
-                    border-radius: 20px;
+                    border-radius: 32px;
                 }}
             """)
 
-    def _trigger_mic(self):
-        """User clicks the mic button on the HUD."""
-        try:
-            from backend.state_machine import state_machine
-            state_machine.on_hotkey_assistant()
-        except Exception as e:
-            logger.error("Error triggering mic from HUD: %s", e)
-
-    def _open_dashboard(self):
-        """Opens http://127.0.0.1:8000/dashboard in default web browser."""
-        webbrowser.open("http://127.0.0.1:8000/dashboard")
-
-    def _stop_golu(self):
-        """Emergency Stop button."""
-        try:
-            from backend.state_machine import state_machine, GoluMode
-            state_machine.transition_to(GoluMode.KILL)
-            self.hide()
-        except Exception as e:
-            logger.error("Error stopping Golu from HUD: %s", e)
-
-    # Window Dragging handlers
+    # Click on logo expands into chat window; drag moves the widget anywhere
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._press_pos = event.globalPosition().toPoint()
             event.accept()
 
     def mouseMoveEvent(self, event):
@@ -355,11 +489,15 @@ class FloatingSiriHUD(QWidget):
             event.accept()
 
     def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and getattr(self, "_press_pos", None) is not None:
+            distance = (event.globalPosition().toPoint() - self._press_pos).manhattanLength()
+            if distance < 8 and not self.is_expanded:
+                self.expand_to_chat()
         self._drag_pos = None
+        self._press_pos = None
 
 
 def launch_siri_hud(communicator: Optional[SiriHUDCommunicator] = None) -> FloatingSiriHUD:
-    """Helper to instantiate and show the Siri HUD."""
     hud = FloatingSiriHUD(communicator)
     hud.show()
     return hud
@@ -368,5 +506,4 @@ def launch_siri_hud(communicator: Optional[SiriHUDCommunicator] = None) -> Float
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     hud = launch_siri_hud()
-    hud.comm.listening_signal.emit("Listening for 'Hey Golu'...")
     sys.exit(app.exec())

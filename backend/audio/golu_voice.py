@@ -84,31 +84,60 @@ class GoluVoiceEngine:
         sample_rate: int = 16000,
         language: Optional[str] = None
     ) -> Tuple[str, str, float]:
-        """Transcribes Hinglish audio using Faster-Whisper on CPU.
+        """Transcribes Hinglish audio using Hybrid ASR:
+        1. Fast, highly accurate Google Speech Recognition (en-IN) when online (< 400ms)
+        2. 100% offline fallback: Faster-Whisper base model (int8 on CPU) with beam search
         Returns: (transcribed_text, detected_language, duration_seconds)
         """
         start_time = time.perf_counter()
-        
-        # If input is raw PCM bytes, convert to numpy float32
+        pcm_bytes = None
+        audio_array = None
+
+        # Normalize audio input into pcm_bytes and audio_array
         if isinstance(audio_input, bytes):
+            pcm_bytes = audio_input
             audio_array = np.frombuffer(audio_input, dtype=np.int16).astype(np.float32) / 32768.0
         elif isinstance(audio_input, np.ndarray):
             audio_array = audio_input.astype(np.float32)
             if np.max(np.abs(audio_array)) > 1.0:
                 audio_array /= 32768.0
+            pcm_bytes = (audio_array * 32767.0).astype(np.int16).tobytes()
         elif isinstance(audio_input, (list, tuple)):
             audio_array = np.array(audio_input, dtype=np.float32)
-        else:
-            # File path string
-            audio_array = audio_input
+            pcm_bytes = (audio_array * 32767.0).astype(np.int16).tobytes()
+        elif isinstance(audio_input, str) and os.path.isfile(audio_input):
+            try:
+                with wave.open(audio_input, "rb") as wf:
+                    sample_rate = wf.getframerate()
+                    pcm_bytes = wf.readframes(wf.getnframes())
+                audio_array = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+            except Exception as e:
+                logger.debug("Failed to read audio file for ASR: %s", e)
 
+        # Tier 1: Try Fast Google Indian English (en-IN) ASR
+        if pcm_bytes and len(pcm_bytes) >= 1600:
+            try:
+                import speech_recognition as sr
+                r = sr.Recognizer()
+                r.energy_threshold = 250
+                r.dynamic_energy_threshold = False
+                audio_data = sr.AudioData(pcm_bytes, sample_rate, 2)
+                text = r.recognize_google(audio_data, language="en-IN")
+                if text and text.strip():
+                    duration = time.perf_counter() - start_time
+                    logger.info("Transcribed via Google en-IN in %.2fs: '%s'", duration, text.strip())
+                    return text.strip(), "en", duration
+            except Exception as e:
+                logger.debug("Google ASR fallback to Whisper: %s", e)
+
+        # Tier 2: Offline Faster-Whisper Base Model on CPU
         if self._whisper_model is None:
             self._load_whisper_lazy()
 
-        if self._whisper_model is not None:
+        if self._whisper_model is not None and audio_array is not None:
             try:
                 # Automatic gain normalization: boost low microphone signal to optimal 0.90 peak
-                if isinstance(audio_array, np.ndarray) and len(audio_array) > 0:
+                if len(audio_array) > 0:
                     peak = float(np.max(np.abs(audio_array)))
                     if peak > 0.005:
                         audio_array = (audio_array / peak) * 0.90
@@ -142,7 +171,7 @@ class GoluVoiceEngine:
                 else:
                     full_text = raw_text
                 duration = time.perf_counter() - start_time
-                logger.info("Transcribed in %.2fs [%s, beam=5]: '%s'", duration, info.language, full_text)
+                logger.info("Transcribed via Faster-Whisper in %.2fs [%s, beam=5]: '%s'", duration, info.language, full_text)
                 return full_text, info.language, duration
             except Exception as e:
                 logger.error("Whisper transcription error: %s", e)
@@ -198,9 +227,10 @@ class GoluVoiceEngine:
             logger.debug("Playback error (sounddevice): %s", e)
             return False
 
-    def speak(self, text: str, voice_lang: str = "hi") -> bool:
-        """Synthesizes and speaks text.
+    def speak(self, text: str, voice_lang: str = "hi", voice_name: str = "en-IN-NeerjaNeural") -> bool:
+        """Synthesizes and speaks text using a natural Indian neural voice (edge-tts).
         STRICTLY BLOCKED if is_hard_muted is True (0% chance of meeting leak).
+        Falls back to Windows SAPI if offline.
         """
         if self.is_hard_muted:
             logger.warning("TTS speech suppressed: Engine is hard-muted for meeting security.")
@@ -209,16 +239,68 @@ class GoluVoiceEngine:
         if not text.strip():
             return False
 
-        logger.info("Voice Output: '%s'", text)
-        
-        # Native Windows Speech synthesis fallback via PowerShell
+        # Clean markdown symbols, asterisks, URLs, and code blocks for crisp speech
+        clean_text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+        clean_text = re.sub(r"`.*?`", "", clean_text)
+        clean_text = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", clean_text)
+        clean_text = re.sub(r"[*_~#>-]", "", clean_text)
+        clean_text = re.sub(r"\s+", " ", clean_text).strip()
+
+        logger.info("Voice Output: '%s'", clean_text)
+
+        # Attempt 1: High-fidelity Natural Indian Neural Voice (edge-tts)
+        try:
+            import certifi
+            os.environ["SSL_CERT_FILE"] = certifi.where()
+            import asyncio
+            import edge_tts
+            import soundfile as sf
+            import sounddevice as sd
+            import threading
+
+            async def _synthesize_edge() -> bytes:
+                communicate = edge_tts.Communicate(clean_text, voice=voice_name, rate="+4%")
+                chunks = []
+                async for chunk in communicate.stream():
+                    if chunk["type"] == "audio":
+                        chunks.append(chunk["data"])
+                return b"".join(chunks)
+
+            # Thread-safe execution of async synthesis
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        audio_mp3 = pool.submit(lambda: asyncio.run(_synthesize_edge())).result(timeout=6.0)
+                else:
+                    audio_mp3 = loop.run_until_complete(_synthesize_edge())
+            except Exception:
+                audio_mp3 = asyncio.run(_synthesize_edge())
+
+            if audio_mp3:
+                data, samplerate = sf.read(io.BytesIO(audio_mp3))
+                
+                def _play():
+                    try:
+                        sd.play(data, samplerate)
+                        sd.wait()
+                    except Exception as err:
+                        logger.debug("Playback error in thread: %s", err)
+
+                threading.Thread(target=_play, daemon=True).start()
+                return True
+        except Exception as e:
+            logger.debug("Edge-TTS natural voice fallback: %s", e)
+
+        # Attempt 2: Native Windows Speech synthesis fallback via PowerShell
         try:
             import subprocess
-            clean_text = text.replace("'", "").replace('"', "")
+            safe_text = clean_text.replace("'", "").replace('"', "")
             ps_cmd = (
                 f"Add-Type -AssemblyName System.Speech; "
                 f"$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
-                f"$s.Speak('{clean_text}')"
+                f"$s.Speak('{safe_text}')"
             )
             subprocess.Popen(["powershell", "-NoProfile", "-Command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return True
