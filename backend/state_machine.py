@@ -100,9 +100,15 @@ class FiniteStateMachine:
         return self.current_mode
 
     def on_hotkey_assistant(self):
-        """[Ctrl+Alt+A]: Activates Assistant Mode, plays instant feedback chime, and listens for query."""
+        """[Ctrl+Alt+A]: Activates Assistant Mode, plays instant feedback chime, pops up Floating Siri HUD, and listens."""
         logger.info("Hotkey [Ctrl+Alt+A] detected.")
         self.transition_to(GoluMode.ASSISTANT)
+        try:
+            from stealth_hud.siri_hud import siri_communicator
+            siri_communicator.show_signal.emit()
+            siri_communicator.listening_signal.emit("Listening for your voice... Speak now!")
+        except Exception:
+            pass
         mic_listener.trigger_manual_listen()
 
     def on_hotkey_meeting(self):
@@ -114,6 +120,11 @@ class FiniteStateMachine:
         """[Ctrl+Alt+X]: Emergency kill switch."""
         logger.info("Hotkey [Ctrl+Alt+X] detected.")
         self.transition_to(GoluMode.KILL)
+        try:
+            from stealth_hud.siri_hud import siri_communicator
+            siri_communicator.hide_signal.emit()
+        except Exception:
+            pass
 
     def toggle_hud(self):
         """[Ctrl+Alt+H]: Instantly toggles HUD visibility on physical monitor."""

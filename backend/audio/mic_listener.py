@@ -1,28 +1,33 @@
 """Project Golu: Real-Time Microphone Listener & Voice Assistant Worker.
-Listens to the local microphone, performs energy-based VAD filtering (< 2% CPU idle),
-detects wake words ('Hey Golu' / 'Hi Golu'), handles instant manual triggers via [Ctrl+Alt+A],
-and dispatches queries to Golu's Unified Assistant (Vault + RAG + Internet Search + Local LLM).
+Features:
+- Circular pre-roll buffer (300ms) to prevent clipping initial syllables
+- Dynamic adaptive RMS noise floor calibration
+- Whisper decoding with beam search and Hinglish context conditioning
+- Bridge to Floating Siri HUD (stealth_hud/siri_hud.py)
+- Hands-free wake word ('Hey Golu') and manual shortcut trigger [Ctrl+Alt+A]
 """
 
 import time
 import queue
 import logging
 import threading
+from collections import deque
 from typing import Optional, Callable
 import numpy as np
 import sounddevice as sd
 
 from backend.audio.golu_voice import voice_engine
 from backend.assistant import assistant
+from stealth_hud.siri_hud import siri_communicator
 
 logger = logging.getLogger("golu.audio.mic")
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
-BLOCK_SIZE = 1600  # 100ms blocks at 16kHz
-SILENCE_THRESHOLD_RMS = 120.0  # RMS energy threshold for speech detection
-SILENCE_TIMEOUT_BLOCKS = 8     # ~800ms of consecutive silence ends utterance
-MAX_UTTERANCE_BLOCKS = 80      # ~8.0 seconds max recording
+BLOCK_SIZE = 1600          # 100ms blocks at 16kHz
+DEFAULT_THRESHOLD_RMS = 80.0
+SILENCE_TIMEOUT_BLOCKS = 8 # ~800ms of consecutive silence ends utterance
+MAX_UTTERANCE_BLOCKS = 90  # ~9.0 seconds max recording
 
 
 class MicrophoneListener:
@@ -34,8 +39,10 @@ class MicrophoneListener:
         self._thread: Optional[threading.Thread] = None
         self._audio_queue: queue.Queue = queue.Queue()
         self._manual_listen: bool = False
+        self._manual_listen_start_time: float = 0.0
         self._lock = threading.Lock()
         self._on_query_callback: Optional[Callable[[str, str], None]] = None
+        self.silence_threshold: float = DEFAULT_THRESHOLD_RMS
 
     def register_query_callback(self, cb: Callable[[str, str], None]):
         """Callback(query, answer) to notify HUD or other clients."""
@@ -52,8 +59,15 @@ class MicrophoneListener:
         """Called when [Ctrl+Alt+A] is pressed: gives immediate audio feedback and primes for query."""
         with self._lock:
             self._manual_listen = True
+            self._manual_listen_start_time = time.perf_counter()
 
         logger.info("Manual voice query triggered via shortcut [Ctrl+Alt+A].")
+        # Visual notification on Floating Siri HUD
+        try:
+            siri_communicator.listening_signal.emit("Listening for your voice... Speak now!")
+        except Exception:
+            pass
+
         # Play instant acknowledgement chime / clip
         voice_engine.play_reaction_clip("ack_haan_bhai.wav")
 
@@ -118,6 +132,8 @@ class MicrophoneListener:
         speech_buffer = []
         is_speech_active = False
         silence_count = 0
+        pre_roll = deque(maxlen=3)  # 300ms pre-roll circular buffer to catch initial consonants
+        noise_samples = []
 
         logger.info("Microphone listener worker active. Waiting for 'Hey Golu' or [Ctrl+Alt+A]...")
 
@@ -127,27 +143,45 @@ class MicrophoneListener:
             except queue.Empty:
                 continue
 
+            if not chunk:
+                # Sentinel wake-up on shutdown
+                continue
+
             # If hard-muted (in Meeting mode), discard audio
             if voice_engine.is_hard_muted:
                 time.sleep(0.1)
                 continue
 
             rms = voice_engine.compute_vad_rms(chunk)
-            is_above_threshold = (rms >= SILENCE_THRESHOLD_RMS)
+
+            # Adaptive noise floor calibration for the first 5 blocks
+            if len(noise_samples) < 5:
+                noise_samples.append(rms)
+                if len(noise_samples) == 5:
+                    avg_noise = sum(noise_samples) / 5.0
+                    self.silence_threshold = max(60.0, avg_noise * 1.8)
+                    logger.info("Calibrated ambient mic noise floor: %.1f RMS (Threshold: %.1f RMS)", avg_noise, self.silence_threshold)
 
             with self._lock:
                 manual_active = self._manual_listen
+                # Auto-timeout manual listen if user stays silent for > 6 seconds
+                if manual_active and (time.perf_counter() - self._manual_listen_start_time > 6.0):
+                    self._manual_listen = False
+                    manual_active = False
+
+            is_above_threshold = (rms >= self.silence_threshold)
 
             if is_above_threshold or manual_active:
                 if not is_speech_active:
                     is_speech_active = True
                     silence_count = 0
-                    speech_buffer = [chunk]
+                    # Prepend pre-roll buffer to preserve attack transient of first word
+                    speech_buffer = list(pre_roll) + [chunk]
                 else:
                     speech_buffer.append(chunk)
                     silence_count = 0
 
-                # Utterance length safety cap
+                # Utterance length safety cap (~9s)
                 if len(speech_buffer) >= MAX_UTTERANCE_BLOCKS:
                     self._process_utterance(b"".join(speech_buffer), manual_active)
                     speech_buffer = []
@@ -166,31 +200,31 @@ class MicrophoneListener:
                     silence_count = 0
                     with self._lock:
                         self._manual_listen = False
+            else:
+                pre_roll.append(chunk)
 
     def _process_utterance(self, audio_bytes: bytes, was_manual: bool):
         """Transcribes speech and routes to Assistant."""
         if len(audio_bytes) < BLOCK_SIZE * 3:
-            # Too short (< 300ms), likely click or transient noise
+            # Too short (< 300ms), transient noise
             return
 
-        logger.info("Transcribing captured speech (%d bytes)...", len(audio_bytes))
+        logger.info("Processing captured speech (%d bytes)...", len(audio_bytes))
         transcript, lang, dur = voice_engine.transcribe(audio_bytes)
         transcript = transcript.strip()
 
         if not transcript:
             return
 
-        logger.info("Captured voice transcript: '%s'", transcript)
+        logger.info("Captured voice transcript [%.2fs]: '%s'", dur, transcript)
 
         query = ""
         should_process = False
 
         if was_manual:
-            # User explicitly pressed shortcut, treat entire transcript as query
             should_process = True
             query = transcript
         else:
-            # Check for wake word ('Hey Golu', 'Hi Golu', etc.)
             is_wake, remaining = voice_engine.detect_wake_word(transcript)
             if is_wake:
                 should_process = True
@@ -198,17 +232,33 @@ class MicrophoneListener:
                 if remaining:
                     query = remaining
                 else:
-                    # Spoke wake word only, prime manual listen for follow-up
                     with self._lock:
                         self._manual_listen = True
+                        self._manual_listen_start_time = time.perf_counter()
+                    try:
+                        siri_communicator.listening_signal.emit("Haan bhai, bolo! (Listening...)")
+                    except Exception:
+                        pass
                     return
 
         if should_process and query:
-            logger.info("Processing voice query: '%s'", query)
+            logger.info("Executing assistant query: '%s'", query)
+            # Update Floating Siri HUD with transcript
+            try:
+                siri_communicator.transcript_signal.emit(query)
+            except Exception:
+                pass
+
             res = assistant.ask(query, allow_web_search=True)
             answer = res.get("answer", "")
             source = res.get("source", "unknown")
-            logger.info("Voice Assistant answer [%s]: '%s'", source, answer)
+            logger.info("Assistant answer [%s]: '%s'", source, answer)
+
+            # Update Floating Siri HUD with answer
+            try:
+                siri_communicator.answer_signal.emit(answer, source)
+            except Exception:
+                pass
 
             if self._on_query_callback:
                 try:
@@ -216,7 +266,7 @@ class MicrophoneListener:
                 except Exception as e:
                     logger.debug("Error in query callback: %s", e)
 
-            # Speak answer back to user
+            # Speak answer back aloud to user
             voice_engine.speak(answer)
 
 
@@ -225,7 +275,6 @@ mic_listener = MicrophoneListener()
 
 
 if __name__ == "__main__":
-    import sys
     print("""
     ==================================================================
         PROJECT GOLU: LIVE VOICE ASSISTANT MIC TEST

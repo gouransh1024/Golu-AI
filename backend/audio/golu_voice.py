@@ -31,7 +31,7 @@ class GoluVoiceEngine:
     Operates 100% on CPU, keeping GPU VRAM strictly isolated for LLM inference.
     """
 
-    def __init__(self, model_size: str = "tiny", device: str = "cpu", compute_type: str = "int8"):
+    def __init__(self, model_size: str = "base", device: str = "cpu", compute_type: str = "int8"):
         self.model_size = model_size
         self.device = device
         self.compute_type = compute_type
@@ -106,17 +106,32 @@ class GoluVoiceEngine:
 
         if self._whisper_model is not None:
             try:
+                # Automatic gain normalization: boost low microphone signal to optimal 0.90 peak
+                if isinstance(audio_array, np.ndarray) and len(audio_array) > 0:
+                    peak = float(np.max(np.abs(audio_array)))
+                    if peak > 0.005:
+                        audio_array = (audio_array / peak) * 0.90
+
+                initial_prompt = (
+                    "Conversational Indian English and Hinglish assistant query for Golu AI: "
+                    "Hey Golu, Hi Golu, search internet, what is my name, resume, projects, Python."
+                )
+
                 segments, info = self._whisper_model.transcribe(
                     audio_array,
-                    beam_size=1,
-                    language=language,
+                    beam_size=5,
+                    best_of=5,
+                    temperature=0.0,
+                    condition_on_previous_text=False,
+                    initial_prompt=initial_prompt,
+                    language=language or "en",
                     vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=500)
+                    vad_parameters=dict(min_silence_duration_ms=400)
                 )
                 text_segments = [s.text.strip() for s in segments]
                 full_text = " ".join(text_segments).strip()
                 duration = time.perf_counter() - start_time
-                logger.info("Transcribed in %.2fs [%s]: '%s'", duration, info.language, full_text)
+                logger.info("Transcribed in %.2fs [%s, beam=5]: '%s'", duration, info.language, full_text)
                 return full_text, info.language, duration
             except Exception as e:
                 logger.error("Whisper transcription error: %s", e)
