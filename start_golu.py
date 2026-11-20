@@ -81,9 +81,14 @@ def main():
     # 2. Pre-warm AI Models & VRAM
     run_full_warmup()
 
-    # 3. Start Global Hotkey Listener
+    # 3. Start Global Hotkey Listener & Live Mic Assistant
     state_machine.start_hotkey_listener()
     state_machine.transition_to(GoluMode.ASSISTANT)
+    
+    # Play startup confirmation sound
+    from backend.audio.golu_voice import voice_engine
+    voice_engine.play_reaction_clip("ack_haan_bhai.wav")
+    logger.info("Project Golu Voice Engine active and listening for 'Hey Golu' or [Ctrl+Alt+A].")
 
     # 4. Start Orchestrator
     try:

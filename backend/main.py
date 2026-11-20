@@ -36,6 +36,7 @@ from backend.llm_engine import llm_engine
 from backend.router import router
 from backend.state_machine import state_machine, GoluMode
 from backend.meeting_copilot import meeting_copilot
+from backend.assistant import assistant
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("golu.server")
@@ -402,6 +403,25 @@ def simulate_meeting_copilot(
         "status": "success",
         "question": clean_q,
         "copilot_advice": advice
+    }
+
+
+class AskRequest(BaseModel):
+    query: str = Field(..., description="User query or voice transcript")
+    allow_web_search: bool = Field(default=True, description="Whether to allow real-time internet search")
+
+
+@app.post("/api/ask")
+def ask_assistant(req: AskRequest, token: str = Depends(verify_golu_token)):
+    """
+    Unified question answering endpoint:
+    Routes query across Vault (<20ms), Local RAG, Real-Time Internet Search, and Local LLM Brain.
+    """
+    clean_q = security_manager.sanitize_input(req.query)
+    res = assistant.ask(clean_q, allow_web_search=req.allow_web_search)
+    return {
+        "status": "success",
+        "result": res
     }
 
 

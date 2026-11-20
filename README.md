@@ -7,9 +7,10 @@
 
 Project Golu is engineered as a **Zero-Cloud, Local Client–Server AI System**: a single secured Python orchestrator (`127.0.0.1:8000`) serving four specialized thin clients:
 1. **Universal Browser Extension**: Manifest V3 extension with native React/Vue/Angular property descriptor dispatch and active learning toast.
-2. **Hinglish Voice Interface ("Hey Golu")**: Faster-Whisper int8 on CPU + VAD filter + pre-rendered instant reaction clips (< 100ms response feel).
-3. **Desktop & Vision Automation Engine**: Tier 2 Windows Native UI Automation (UIA) tree traversal + Tier 3 constrained 720p vision fallback with `pyautogui.FAILSAFE = True`.
-4. **Invisible Meeting Co-Pilot HUD**: Cloaked PyQt6 glassmorphism overlay using Windows API `SetWindowDisplayAffinity(hwnd, 0x00000011)` (`WDA_EXCLUDEFROMCAPTURE`), rendering advice completely invisible to Google Meet, Zoom, MS Teams, OBS, and Snipping Tool.
+2. **Hinglish Voice Interface ("Hey Golu")**: Faster-Whisper int8 on CPU + VAD filter + pre-rendered instant reaction clips (< 100ms response feel) with manual shortcut trigger (`Ctrl + Alt + A`).
+3. **Real-Time Internet Search**: Zero-dependency web search (DuckDuckGo + Wikipedia) with local LLM summarization for real-time questions, weather, news, and knowledge beyond local documents.
+4. **Desktop & Vision Automation Engine**: Tier 2 Windows Native UI Automation (UIA) tree traversal + Tier 3 constrained 720p vision fallback with `pyautogui.FAILSAFE = True`.
+5. **Invisible Meeting Co-Pilot HUD**: Cloaked PyQt6 glassmorphism overlay using Windows API `SetWindowDisplayAffinity(hwnd, 0x00000011)` (`WDA_EXCLUDEFROMCAPTURE`), rendering advice completely invisible to Google Meet, Zoom, MS Teams, OBS, and Snipping Tool.
 
 ---
 
