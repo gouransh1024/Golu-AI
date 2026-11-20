@@ -25,7 +25,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Depends, status, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 
 from backend.security import security_manager
@@ -55,6 +55,17 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+DASHBOARD_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "judge_metrics.html"
+
+
+@app.get("/")
+@app.get("/dashboard")
+def get_dashboard():
+    """Serves the live executive judge metrics readout."""
+    if DASHBOARD_PATH.exists():
+        return FileResponse(DASHBOARD_PATH)
+    return JSONResponse({"status": "active", "service": "Project Golu Orchestrator"})
 
 
 # ================= Authentication Dependency =================

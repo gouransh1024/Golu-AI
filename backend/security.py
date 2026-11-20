@@ -30,9 +30,9 @@ KEY_FALLBACK_FILE = Path(__file__).resolve().parent.parent / "data" / ".vault_ma
 # Sensitive keywords that must never be auto-filled or suggested
 SENSITIVE_DENY_LIST = {
     "password", "passwd", "pwd", "secret", "cvv", "cvc", "otp", "pin",
-    "card_number", "credit_card", "debit_card", "expiry", "card_expiry",
+    "card_number", "credit_card", "debit_card", "expiry", "card_expiry", "exp_date", "card_exp",
     "aadhaar", "aadhar", "pan", "pan_card", "pan_number", "ssn", "social_security",
-    "netbanking", "bank_account_pin", "auth_token", "api_key", "secret_key"
+    "netbanking", "bank_account_pin", "auth_token", "api_key", "secret_key", "recovery_key"
 }
 
 # Prompt injection signatures to flag and neutralize
@@ -146,15 +146,17 @@ class SecurityManager:
     # ================= Prompt Injection Firewall =================
 
     @staticmethod
-    def is_sensitive_field(field_name: str, field_type: str = "text") -> bool:
+    def is_sensitive_field(field_name: str, field_type: str = "text", field_label: str = "") -> bool:
         """
         Deny-List Filter:
         Returns True if the field is a password, OTP, CVV, Card, Aadhaar, PAN, or PIN.
+        Checks both field_name, field_type, and field_label.
         """
         if field_type.lower() in {"password", "hidden"}:
             return True
 
-        normalized = re.sub(r"[^a-zA-Z0-9]", "_", field_name.lower())
+        combined = f"{field_name} {field_label}".lower()
+        normalized = re.sub(r"[^a-zA-Z0-9]", "_", combined)
         for blocked in SENSITIVE_DENY_LIST:
             if blocked in normalized:
                 return True

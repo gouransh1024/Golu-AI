@@ -113,7 +113,7 @@ class ConfidenceRouter:
         query_text = (field_label or field_name or placeholder or "").strip()
 
         # Step 0: Security Deny-List Check
-        if security_manager.is_sensitive_field(field_name, field_type):
+        if security_manager.is_sensitive_field(field_name, field_type, query_text):
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
             return {
                 "field_name": field_name,

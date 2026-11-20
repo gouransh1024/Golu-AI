@@ -95,6 +95,8 @@ class GoluVoiceEngine:
             audio_array = audio_input.astype(np.float32)
             if np.max(np.abs(audio_array)) > 1.0:
                 audio_array /= 32768.0
+        elif isinstance(audio_input, (list, tuple)):
+            audio_array = np.array(audio_input, dtype=np.float32)
         else:
             # File path string
             audio_array = audio_input
