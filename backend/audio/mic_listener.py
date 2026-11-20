@@ -164,8 +164,8 @@ class MicrophoneListener:
 
             with self._lock:
                 manual_active = self._manual_listen
-                # Auto-timeout manual listen if user stays silent for > 6 seconds
-                if manual_active and (time.perf_counter() - self._manual_listen_start_time > 6.0):
+                # Auto-timeout conversational listen if user stays silent for > 15 seconds
+                if manual_active and (time.perf_counter() - self._manual_listen_start_time > 15.0):
                     self._manual_listen = False
                     manual_active = False
 
@@ -221,24 +221,31 @@ class MicrophoneListener:
         query = ""
         should_process = False
 
+        is_wake, remaining = voice_engine.detect_wake_word(transcript)
+
         if was_manual:
             should_process = True
-            query = transcript
+            # If user repeated wake word in conversational mode, strip it cleanly
+            query = remaining if (is_wake and remaining) else transcript
         else:
-            is_wake, remaining = voice_engine.detect_wake_word(transcript)
             if is_wake:
                 should_process = True
-                voice_engine.play_reaction_clip("ack_haan_bhai.wav")
                 if remaining:
                     query = remaining
                 else:
+                    # User greeted Golu without specific query
+                    greeting = "Haan bhai, bolo! Main sun raha hoon. Kya madad karoon?"
+                    logger.info("Wake word detected without query. Responding: '%s'", greeting)
+                    try:
+                        siri_communicator.transcript_signal.emit(transcript)
+                        siri_communicator.answer_signal.emit(greeting, "conversational")
+                    except Exception:
+                        pass
+                    voice_engine.play_reaction_clip("ack_haan_bhai.wav")
+                    voice_engine.speak(greeting)
                     with self._lock:
                         self._manual_listen = True
                         self._manual_listen_start_time = time.perf_counter()
-                    try:
-                        siri_communicator.listening_signal.emit("Haan bhai, bolo! (Listening...)")
-                    except Exception:
-                        pass
                     return
 
         if should_process and query:
@@ -268,6 +275,11 @@ class MicrophoneListener:
 
             # Speak answer back aloud to user
             voice_engine.speak(answer)
+
+            # Re-arm conversational follow-up window for 15 seconds
+            with self._lock:
+                self._manual_listen = True
+                self._manual_listen_start_time = time.perf_counter()
 
 
 # Global microphone listener instance

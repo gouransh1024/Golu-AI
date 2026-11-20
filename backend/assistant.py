@@ -48,6 +48,40 @@ class GoluAssistant:
             return {"answer": "Haan bhai, sun raha hoon. Kuch bolo!", "source": "chime", "latency_ms": 0.0}
 
         lower_q = clean_q.lower()
+
+        # Conversational Fast-Path (Common conversational chit-chat & greetings)
+        if lower_q in ("hi", "hello", "hey", "hello golu", "hi golu", "hey golu", "oye golu", "golu"):
+            return {
+                "query": clean_q,
+                "answer": "Haan bhai! Main Golu hoon, bilkul active aur sun raha hoon. Bolo kya madad karoon?",
+                "source": "conversational",
+                "latency_ms": 1.0
+            }
+
+        if any(p in lower_q for p in ["what are you doing", "kya kar rahe ho", "kya chal raha hai"]):
+            return {
+                "query": clean_q,
+                "answer": "Main aapki commands aur queries sun raha hoon! Aap mujhse internet search, resume profile, ya form autofill ke baare me kuch bhi pooch sakte ho.",
+                "source": "conversational",
+                "latency_ms": 1.0
+            }
+
+        if any(p in lower_q for p in ["where are you listening", "listening to me", "sun rahe ho", "can you hear me"]):
+            return {
+                "query": clean_q,
+                "answer": "Haan bhai, bilkul sun raha hoon! Main aapke laptop ke mic se 100% locally process kar raha hoon, bina kisi cloud ke.",
+                "source": "conversational",
+                "latency_ms": 1.0
+            }
+
+        if any(p in lower_q for p in ["who are you", "who made you", "kaun ho tum"]):
+            return {
+                "query": clean_q,
+                "answer": "Main Golu hoon, aapka zero-cloud local AI assistant jo 4GB VRAM me 100% offline aur securely aapke system par chalta hai!",
+                "source": "conversational",
+                "latency_ms": 1.0
+            }
+
         has_search_intent = any(k in lower_q for k in SEARCH_INTENT_KEYWORDS)
 
         # Tier 1: Check Deterministic Vault (Personal profile / credentials lookup)

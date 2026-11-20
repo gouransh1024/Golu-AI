@@ -6,6 +6,7 @@ Strictly runs on CPU to reserve 100% of GPU VRAM for LLM generation.
 
 import os
 import io
+import re
 import time
 import wave
 import struct
@@ -129,7 +130,17 @@ class GoluVoiceEngine:
                     vad_parameters=dict(min_silence_duration_ms=400)
                 )
                 text_segments = [s.text.strip() for s in segments]
-                full_text = " ".join(text_segments).strip()
+                raw_text = " ".join(text_segments).strip()
+                # De-duplicate consecutive repeated phrases/sentences
+                parts = [p.strip() for p in re.split(r"[.!?]+", raw_text) if p.strip()]
+                if parts:
+                    deduped = []
+                    for p in parts:
+                        if not deduped or p.lower() != deduped[-1].lower():
+                            deduped.append(p)
+                    full_text = ". ".join(deduped)
+                else:
+                    full_text = raw_text
                 duration = time.perf_counter() - start_time
                 logger.info("Transcribed in %.2fs [%s, beam=5]: '%s'", duration, info.language, full_text)
                 return full_text, info.language, duration
