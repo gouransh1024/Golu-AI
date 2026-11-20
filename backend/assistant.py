@@ -72,6 +72,14 @@ class GoluAssistant:
                 "latency_ms": 1.0
             }
 
+        if any(p in lower_q for p in ["thank you", "thanks", "dhanyawaad", "shukriya"]):
+            return {
+                "query": clean_q,
+                "answer": "Arre koi baat nahi bhai! Hamesha aapki madad ke liye tayaar hoon. Kuch aur poochiye!",
+                "source": "conversational",
+                "latency_ms": 1.0
+            }
+
         if any(p in lower_q for p in ["what are you doing", "kya kar rahe ho", "kya chal raha hai"]):
             return {
                 "query": clean_q,

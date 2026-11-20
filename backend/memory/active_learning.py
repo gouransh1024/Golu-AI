@@ -29,6 +29,11 @@ class ActiveLearningEngine:
         lower = text.lower()
         learned_items = []
 
+        # Ignore inquiries/questions (e.g., "mera naam kya hai", "tell me my name", "mera naam batao")
+        is_question = any(q_word in lower for q_word in ["kya", "batao", "bata", "what", "tell", "who", "pata", "kaun", "?"])
+        if is_question:
+            return None
+
         # 1. Name disclosure: "my name is Gouransh Soni", "mera naam X hai", "i am called X"
         name_match = re.search(r"(?:my name is|mera naam|i am called|call me)\s+([A-Za-z\s]+?)(?:\s+and|\s+aur|\s+hai|\.|$)", text, flags=re.IGNORECASE)
         if name_match:

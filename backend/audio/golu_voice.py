@@ -158,6 +158,7 @@ class GoluVoiceEngine:
                     beam_size=5,
                     best_of=5,
                     temperature=0.0,
+                    repetition_penalty=1.2,
                     condition_on_previous_text=False,
                     initial_prompt=initial_prompt,
                     language=language or "en",
@@ -165,8 +166,8 @@ class GoluVoiceEngine:
                 )
                 text_segments = [s.text.strip() for s in segments]
                 raw_text = " ".join(text_segments).strip()
-                # De-duplicate consecutive repeated phrases/sentences
-                parts = [p.strip() for p in re.split(r"[.!?]+", raw_text) if p.strip()]
+                # De-duplicate consecutive repeated phrases/sentences across commas and periods
+                parts = [p.strip() for p in re.split(r"[,.!?\n]+", raw_text) if p.strip()]
                 if parts:
                     deduped = []
                     for p in parts:
@@ -175,6 +176,8 @@ class GoluVoiceEngine:
                     full_text = ". ".join(deduped)
                 else:
                     full_text = raw_text
+                # Clean any repeated phrases
+                full_text = re.sub(r"(?i)\b(.+?)(?:,\s*\1)+\b", r"\1", full_text)
                 duration = time.perf_counter() - start_time
                 logger.info("Transcribed via Faster-Whisper in %.2fs [%s, beam=5]: '%s'", duration, info.language, full_text)
                 return full_text, info.language, duration
