@@ -284,6 +284,9 @@ class HybridRAGStore:
 
         return final_results
 
+    # Convenient alias
+    query_hybrid = hybrid_search
+
     def clear_store(self):
         """Clears both Chroma collection and BM25 index."""
         try:

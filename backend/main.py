@@ -34,6 +34,8 @@ from backend.memory.rag_store import rag_store
 from backend.memory.ingest import bootstrap_memory, ingest_document
 from backend.llm_engine import llm_engine
 from backend.router import router
+from backend.state_machine import state_machine, GoluMode
+from backend.meeting_copilot import meeting_copilot
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("golu.server")
@@ -335,6 +337,61 @@ def batch_suggest(
         )
         results.append(res)
     return {"results": results, "count": len(results)}
+
+
+# ================= State Management & Meeting Co-Pilot Endpoints =================
+
+class StateChangeRequest(BaseModel):
+    mode: str = Field(..., description="Target mode: MODE_ASSISTANT, MODE_MEETING, MODE_KILL, or IDLE")
+
+
+@app.get("/api/state")
+def get_current_state(token: str = Depends(verify_golu_token)):
+    """Returns live FSM mode and HUD visibility state."""
+    return {
+        "current_mode": state_machine.current_mode.value,
+        "hud_visible": state_machine.hud_visible
+    }
+
+
+@app.post("/api/state")
+def set_state(req: StateChangeRequest, token: str = Depends(verify_golu_token)):
+    """Triggers FSM state transition enforcing mutual exclusivity and hard-mute rules."""
+    try:
+        target = GoluMode(req.mode)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid mode '{req.mode}'. Valid modes: {[m.value for m in GoluMode]}"
+        )
+    new_mode = state_machine.transition_to(target)
+    return {
+        "status": "success",
+        "current_mode": new_mode.value,
+        "hud_visible": state_machine.hud_visible
+    }
+
+
+class MeetingSimulateRequest(BaseModel):
+    speaker_question: str = Field(..., description="Simulated meeting speaker audio question")
+
+
+@app.post("/api/meeting/simulate")
+def simulate_meeting_copilot(
+    req: MeetingSimulateRequest,
+    token: str = Depends(verify_golu_token)
+):
+    """
+    Simulates a meeting participant's question, processes via RAG + LLM,
+    and returns concise talking points for the invisible HUD.
+    """
+    clean_q = security_manager.sanitize_input(req.speaker_question)
+    advice = meeting_copilot.generate_copilot_advice(clean_q)
+    return {
+        "status": "success",
+        "question": clean_q,
+        "copilot_advice": advice
+    }
 
 
 if __name__ == "__main__":

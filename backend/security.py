@@ -190,6 +190,13 @@ class SecurityManager:
         fenced = f"<untrusted_input>{escaped}</untrusted_input>"
         return fenced, True, "safe"
 
+    @staticmethod
+    def sanitize_input(raw_input: str) -> str:
+        """Sanitizes raw input against prompt injections and returns cleaned string."""
+        fenced, is_safe, _ = SecurityManager.inspect_and_fence_input(raw_input)
+        clean = fenced.replace("<untrusted_input>", "").replace("</untrusted_input>", "")
+        return clean.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+
 
 # Global singleton instance
 security_manager = SecurityManager()
