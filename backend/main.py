@@ -23,7 +23,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Depends, status, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Depends, status, Request, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
@@ -32,6 +32,7 @@ from backend.security import security_manager
 from backend.memory.vault_sql import vault_sql
 from backend.memory.rag_store import rag_store
 from backend.memory.ingest import bootstrap_memory, ingest_document
+from backend.memory.doc_parser import parse_and_ingest_document
 from backend.llm_engine import llm_engine
 from backend.router import router
 from backend.state_machine import state_machine, GoluMode
@@ -404,6 +405,37 @@ def simulate_meeting_copilot(
         "question": clean_q,
         "copilot_advice": advice
     }
+
+
+class BrowserChatRequest(BaseModel):
+    message: str = Field(..., description="Message from browser chat")
+    allow_web_search: bool = Field(default=True, description="Whether to allow internet search")
+
+
+@app.post("/api/chat")
+def browser_chat(req: BrowserChatRequest):
+    """Browser-native chat endpoint.
+    Processes user query, performs active learning, checks vault/RAG/web, and returns response.
+    """
+    clean_msg = security_manager.sanitize_input(req.message)
+    res = assistant.ask(clean_msg, allow_web_search=req.allow_web_search)
+    return {
+        "status": "success",
+        "result": res
+    }
+
+
+@app.post("/api/upload-document")
+async def upload_document(file: UploadFile = File(...)):
+    """Uploads and parses a PDF, DOCX, TXT, or MD resume/document,
+    indexes into RAG, and extracts personal fields into encrypted Vault for browser form autofilling.
+    """
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    result = parse_and_ingest_document(file.filename, content)
+    return result
 
 
 class AskRequest(BaseModel):

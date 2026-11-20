@@ -13,6 +13,7 @@ from typing import Dict, Any
 
 from backend.memory.vault_sql import vault_sql
 from backend.memory.rag_store import rag_store
+from backend.memory.active_learning import active_learning_engine
 from backend.llm_engine import llm_engine
 from backend.search import web_search_engine
 from backend.security import security_manager
@@ -49,6 +50,19 @@ class GoluAssistant:
 
         lower_q = clean_q.lower()
 
+        # Active Learning & Memory: Automatically detect and remember user facts
+        learned = active_learning_engine.extract_and_learn(clean_q)
+        if learned:
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            return {
+                "query": clean_q,
+                "answer": learned["ack"],
+                "source": "active_learning",
+                "key": learned["key"],
+                "value": learned["value"],
+                "latency_ms": round(elapsed_ms, 2)
+            }
+
         # Conversational Fast-Path (Common conversational chit-chat & greetings)
         if lower_q in ("hi", "hello", "hey", "hello golu", "hi golu", "hey golu", "oye golu", "golu"):
             return {
@@ -84,12 +98,12 @@ class GoluAssistant:
 
         # Personal Identity Fast-Path
         if any(p in lower_q for p in ["who am i", "mera naam kya hai", "what is my name", "tell me my name", "what's my name", "who am i?"]):
-            name_val = vault_sql.get_value("full_name") or "Gourab Saha"
-            college_val = vault_sql.get_value("university") or "Vellore Institute of Technology"
+            name_val = vault_sql.get_value("full_name") or "Gouransh Soni"
+            college_val = vault_sql.get_value("university") or "Institute of Engineering and Technology, Udaipur"
             branch_val = vault_sql.get_value("major_branch") or "Computer Science and Engineering"
             return {
                 "query": clean_q,
-                "answer": f"Aapka naam {name_val} hai! Aap {college_val} se {branch_val} ke student aur developer ho.",
+                "answer": f"Aapka naam {name_val} hai! Aap {college_val} se {branch_val} ke graduate aur developer ho.",
                 "source": "vault",
                 "confidence": 1.0,
                 "latency_ms": 1.0

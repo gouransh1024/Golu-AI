@@ -41,7 +41,7 @@ def test_02_assistant_routing():
     res_vault = assistant.ask("What is my full name?")
     logger.info("Vault Query -> source=%s, answer='%s'", res_vault.get("source"), res_vault.get("answer"))
     assert res_vault.get("source") == "vault", f"Expected vault source, got {res_vault.get('source')}"
-    assert "Gourab" in res_vault.get("answer", ""), "Expected 'Gourab' in vault answer"
+    assert "gouransh" in res_vault.get("answer", "").lower(), "Expected 'Gouransh' in vault answer"
 
     # Path B: RAG (Resume / Projects)
     res_rag = assistant.ask("What projects or tech stack have I worked with?")
@@ -117,7 +117,7 @@ def test_05_api_ask_endpoint():
     assert r_auth.status_code == 200, f"Expected 200, got {r_auth.status_code}"
     data = r_auth.json()
     assert data.get("status") == "success"
-    assert "Gourab" in data.get("result", {}).get("answer", "")
+    assert "gouransh" in data.get("result", {}).get("answer", "").lower()
 
     logger.info("Test 05 PASSED: /api/ask endpoint secured and operational.")
 

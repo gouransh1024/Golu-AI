@@ -64,12 +64,12 @@ class MicrophoneListener:
         logger.info("Manual voice query triggered via shortcut [Ctrl+Alt+A].")
         # Visual notification on Floating Siri HUD
         try:
-            siri_communicator.listening_signal.emit("Listening for your voice... Speak now!")
+            siri_communicator.listening_signal.emit("Haan bhai, bolo! Listening...")
         except Exception:
             pass
 
-        # Play instant acknowledgement chime / clip
-        voice_engine.play_reaction_clip("ack_haan_bhai.wav")
+        # Play instant manly acknowledgement
+        voice_engine.speak("Haan bhai, bolo!")
 
     def start(self):
         """Starts background microphone listening thread."""
@@ -171,18 +171,26 @@ class MicrophoneListener:
 
             is_above_threshold = (rms >= self.silence_threshold)
 
-            if is_above_threshold or manual_active:
+            if is_above_threshold:
                 if not is_speech_active:
                     is_speech_active = True
                     silence_count = 0
                     # Prepend pre-roll buffer to preserve attack transient of first word
                     speech_buffer = list(pre_roll) + [chunk]
+                    try:
+                        siri_communicator.listening_signal.emit("Listening to you...")
+                    except Exception:
+                        pass
                 else:
                     speech_buffer.append(chunk)
                     silence_count = 0
 
                 # Utterance length safety cap (~9s)
                 if len(speech_buffer) >= MAX_UTTERANCE_BLOCKS:
+                    try:
+                        siri_communicator.transcript_signal.emit("Processing your speech...")
+                    except Exception:
+                        pass
                     self._process_utterance(b"".join(speech_buffer), manual_active)
                     speech_buffer = []
                     is_speech_active = False
@@ -192,8 +200,12 @@ class MicrophoneListener:
             elif is_speech_active:
                 speech_buffer.append(chunk)
                 silence_count += 1
-                if silence_count >= SILENCE_TIMEOUT_BLOCKS:
-                    # Utterance finished
+                # 5 consecutive silent blocks (~500ms) ends the utterance fast!
+                if silence_count >= 5:
+                    try:
+                        siri_communicator.transcript_signal.emit("Processing your speech...")
+                    except Exception:
+                        pass
                     self._process_utterance(b"".join(speech_buffer), manual_active)
                     speech_buffer = []
                     is_speech_active = False
@@ -234,14 +246,13 @@ class MicrophoneListener:
                     query = remaining
                 else:
                     # User greeted Golu without specific query
-                    greeting = "Haan bhai, bolo! Main sun raha hoon. Kya madad karoon?"
-                    logger.info("Wake word detected without query. Responding: '%s'", greeting)
+                    greeting = "Haan bhai, bolo!"
+                    logger.info("Wake word detected. Responding: '%s'", greeting)
                     try:
                         siri_communicator.transcript_signal.emit(transcript)
                         siri_communicator.answer_signal.emit(greeting, "conversational")
                     except Exception:
                         pass
-                    voice_engine.play_reaction_clip("ack_haan_bhai.wav")
                     voice_engine.speak(greeting)
                     with self._lock:
                         self._manual_listen = True

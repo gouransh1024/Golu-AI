@@ -1,14 +1,13 @@
-GOURAB SAHA
-Bengaluru, Karnataka, India | +91 9876543210 | gourabsaha.dev@gmail.com
-LinkedIn: linkedin.com/in/gourabsaha-dev | GitHub: github.com/gourabsaha | Portfolio: gourabsaha.dev
+GOURANSH SONI
+Udaipur, Rajasthan, India | +91 9876543210 | gouranshsoni.dev@gmail.com
+LinkedIn: linkedin.com/in/gouransh-soni | GitHub: github.com/gouranshsoni
 
 PROFESSIONAL SUMMARY
 High-performing Full-Stack & AI Systems Engineer with deep expertise in local AI orchestration, low-latency architectures, and memory-constrained edge deployment. Experienced in designing production-grade client-server systems, privacy-preserving zero-cloud architectures, and hardware-constrained GPU pipelines (4GB VRAM optimization). Proven track record of shipping production tools with 99.9% deterministic accuracy.
 
 EDUCATION
-Vellore Institute of Technology (VIT)
-Bachelor of Technology in Computer Science and Engineering | 2021 – 2025
-- Current CGPA: 8.85 / 10.0
+Institute of Engineering and Technology, Udaipur (IET Udaipur)
+Bachelor of Technology in Computer Science and Engineering | 2020 – 2024
 - Coursework: Data Structures & Algorithms, Operating Systems, Database Management Systems, Distributed Systems, Computer Networks, Machine Learning.
 
 TECHNICAL SKILLS

@@ -16,6 +16,12 @@ from typing import Tuple, Optional, Union
 import numpy as np
 from rapidfuzz import fuzz
 
+try:
+    import certifi
+    os.environ["SSL_CERT_FILE"] = certifi.where()
+except Exception:
+    pass
+
 from backend.audio.reaction_clips import get_reaction_clip
 
 logger = logging.getLogger("golu.audio.voice")
@@ -155,8 +161,7 @@ class GoluVoiceEngine:
                     condition_on_previous_text=False,
                     initial_prompt=initial_prompt,
                     language=language or "en",
-                    vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=400)
+                    vad_filter=False
                 )
                 text_segments = [s.text.strip() for s in segments]
                 raw_text = " ".join(text_segments).strip()
@@ -227,8 +232,8 @@ class GoluVoiceEngine:
             logger.debug("Playback error (sounddevice): %s", e)
             return False
 
-    def speak(self, text: str, voice_lang: str = "hi", voice_name: str = "en-IN-NeerjaNeural") -> bool:
-        """Synthesizes and speaks text using a natural Indian neural voice (edge-tts).
+    def speak(self, text: str, voice_lang: str = "hi", voice_name: str = "en-IN-PrabhatNeural") -> bool:
+        """Synthesizes and speaks text using a natural manly Indian neural voice (edge-tts).
         STRICTLY BLOCKED if is_hard_muted is True (0% chance of meeting leak).
         Falls back to Windows SAPI if offline.
         """

@@ -27,29 +27,30 @@ DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "vault.db"
 DEFAULT_PROFILE_SEED = [
     {
         "key": "full_name",
-        "value": "Gourab Saha",
+        "value": "Gouransh Soni",
         "category": "personal",
         "aliases": [
             "full name", "your name", "name", "candidate name", "applicant name",
             "student name", "naam", "pura naam", "apna naam", "my name", "mera naam",
-            "who am i", "my full name", "mera pura naam", "user name", "about me", "my identity"
+            "who am i", "my full name", "mera pura naam", "user name", "about me", "my identity",
+            "gouransh", "gouransh soni"
         ]
     },
     {
         "key": "first_name",
-        "value": "Gourab",
+        "value": "Gouransh",
         "category": "personal",
-        "aliases": ["first name", "given name", "first_name", "pehla naam", "my first name", "mera pehla naam"]
+        "aliases": ["first name", "given name", "first_name", "pehla naam", "my first name", "mera pehla naam", "gouransh"]
     },
     {
         "key": "last_name",
-        "value": "Saha",
+        "value": "Soni",
         "category": "personal",
-        "aliases": ["last name", "surname", "family name", "last_name", "upnaam", "my last name", "mera last name", "my surname"]
+        "aliases": ["last name", "surname", "family name", "last_name", "upnaam", "my last name", "mera last name", "my surname", "soni"]
     },
     {
         "key": "email",
-        "value": "gourabsaha.dev@gmail.com",
+        "value": "gouranshsoni.dev@gmail.com",
         "category": "contact",
         "aliases": [
             "email", "email address", "e-mail", "email id", "mail id",
@@ -68,11 +69,13 @@ DEFAULT_PROFILE_SEED = [
     },
     {
         "key": "university",
-        "value": "Vellore Institute of Technology",
+        "value": "Institute of Engineering and Technology, Udaipur",
         "category": "education",
         "aliases": [
             "university", "college", "institute", "college name", "university name",
-            "institution name", "alma mater", "school/college", "my college", "my university", "mera college", "mera university"
+            "institution name", "alma mater", "school/college", "my college", "my university",
+            "mera college", "mera university", "iet udaipur", "iet", "institute of engineering and technology",
+            "institute of engineering and technology udaipur"
         ]
     },
     {
@@ -283,7 +286,10 @@ class VaultSQL:
     ):
         """Encrypts value with AES-256 and persists in SQLite."""
         norm_key = canonical_key.strip().lower()
-        encrypted = security_manager.encrypt_value(value)
+        clean_val = value.strip()
+        if norm_key in ("full_name", "first_name", "last_name") and clean_val.isupper():
+            clean_val = clean_val.title()
+        encrypted = security_manager.encrypt_value(clean_val)
 
         with self._get_connection() as conn:
             cursor = conn.cursor()

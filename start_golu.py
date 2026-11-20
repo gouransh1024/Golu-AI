@@ -109,7 +109,7 @@ def main():
 
     # Play startup confirmation sound
     from backend.audio.golu_voice import voice_engine
-    voice_engine.play_reaction_clip("ack_haan_bhai.wav")
+    voice_engine.speak("Haan bhai, bolo!")
     logger.info("Project Golu Voice Engine active and listening for 'Hey Golu' or [Ctrl+Alt+A].")
 
     # 6. Launch Floating Siri HUD GUI on main thread (with fallback for headless environments)
