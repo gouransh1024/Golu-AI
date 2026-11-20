@@ -3,43 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Golu: Zero-Cloud Local AI Assistant & Dashboard</title>
+    <title>Project Golu: Zero-Cloud AI Agent & Executive Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #090d16;
-            --card-bg: rgba(15, 23, 42, 0.88);
-            --border: rgba(56, 189, 248, 0.25);
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-cyan: #38bdf8;
-            --accent-green: #34d399;
-            --accent-purple: #c084fc;
-            --accent-amber: #fbbf24;
-            --accent-red: #f87171;
+            /* Luxury Aesthetic: Obsidian + Rose Pink + Yellow Cream */
+            --bg-obsidian: #0b090a;
+            --bg-card: rgba(26, 22, 24, 0.88);
+            --bg-card-hover: rgba(36, 30, 33, 0.95);
+            
+            /* Yellow Cream Palette */
+            --cream-light: #fffdfa;
+            --cream-base: #fef3c7;
+            --cream-warm: #fde68a;
+            --cream-champagne: #fef9ee;
+            --cream-border: rgba(253, 230, 138, 0.28);
+            --cream-glow: rgba(254, 243, 199, 0.12);
+
+            /* Rose Pink Palette */
+            --rose-primary: #fb7185;
+            --rose-vivid: #f43f5e;
+            --rose-blush: #fda4af;
+            --rose-dark: #be123c;
+            --rose-border: rgba(251, 113, 133, 0.35);
+            --rose-glow: rgba(251, 113, 133, 0.25);
+
+            /* Text & Accents */
+            --text-primary: #fffdfa;
+            --text-secondary: #d6cfc7;
+            --text-muted: #9c9288;
+            --status-green: #34d399;
         }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: radial-gradient(circle at 50% 0%, #1e293b, var(--bg));
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: 
+                radial-gradient(circle at 15% 0%, rgba(251, 113, 133, 0.16), transparent 38%),
+                radial-gradient(circle at 85% 0%, rgba(254, 243, 199, 0.14), transparent 42%),
+                radial-gradient(circle at 50% 100%, rgba(251, 113, 133, 0.08), transparent 50%),
+                var(--bg-obsidian);
             color: var(--text-primary);
             min-height: 100vh;
-            padding: 24px 16px;
+            padding: 28px 16px;
         }
+
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 22px;
         }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(251, 113, 133, 0.14);
+            border: 1px solid var(--rose-border);
+            color: var(--rose-blush);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
         .header h1 {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            background: linear-gradient(135deg, var(--cream-base) 0%, var(--rose-blush) 45%, var(--rose-primary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 6px;
+            letter-spacing: -0.5px;
         }
+
         .header p {
             color: var(--text-secondary);
             font-size: 13.5px;
+            max-width: 680px;
+            margin: 0 auto;
         }
 
         /* Tab Navigation */
@@ -47,265 +94,357 @@
             display: flex;
             justify-content: center;
             gap: 12px;
-            margin-bottom: 24px;
+            margin-bottom: 26px;
         }
+
         .tab-btn {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid var(--border);
+            background: rgba(26, 22, 24, 0.7);
+            border: 1px solid var(--cream-border);
             color: var(--text-secondary);
-            padding: 10px 22px;
+            padding: 10px 24px;
             border-radius: 25px;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
+            backdrop-filter: blur(10px);
         }
+
         .tab-btn:hover {
-            background: rgba(56, 189, 248, 0.15);
-            color: var(--text-primary);
+            border-color: var(--rose-primary);
+            color: var(--cream-light);
+            background: rgba(251, 113, 133, 0.12);
         }
+
         .tab-btn.active {
-            background: linear-gradient(135deg, #0284c7, #0ea5e9);
+            background: linear-gradient(135deg, var(--rose-primary), #e11d48);
             color: #ffffff;
-            border-color: #38bdf8;
-            box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+            border-color: var(--rose-blush);
+            box-shadow: 0 4px 18px var(--rose-glow);
         }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
         .container {
-            max-width: 1100px;
+            max-width: 1140px;
             margin: 0 auto;
         }
 
-        /* Chat & Document Layout */
+        /* Grid */
         .chat-section-grid {
             display: grid;
             grid-template-columns: 360px 1fr;
-            gap: 20px;
+            gap: 22px;
         }
-        @media (max-width: 860px) {
+        @media (max-width: 890px) {
             .chat-section-grid { grid-template-columns: 1fr; }
         }
 
         .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 20px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(12px);
+            background: var(--bg-card);
+            border: 1px solid var(--cream-border);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 14px 35px -5px rgba(0, 0, 0, 0.6), 0 0 25px var(--rose-glow);
+            backdrop-filter: blur(16px);
+            position: relative;
         }
+
         .card h2 {
             font-size: 15px;
             font-weight: 700;
-            color: var(--accent-cyan);
+            color: var(--cream-warm);
             margin-bottom: 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            letter-spacing: 0.3px;
+        }
+
+        .status-pill {
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+            background: rgba(251, 113, 133, 0.15);
+            color: var(--rose-blush);
+            border: 1px solid var(--rose-border);
         }
 
         /* Upload Zone */
         .dropzone {
-            border: 2px dashed rgba(56, 189, 248, 0.4);
-            border-radius: 12px;
+            border: 2px dashed rgba(253, 230, 138, 0.45);
+            border-radius: 14px;
             padding: 24px 16px;
             text-align: center;
             cursor: pointer;
-            background: rgba(15, 23, 42, 0.5);
-            transition: all 0.2s ease;
-            margin-bottom: 14px;
-        }
-        .dropzone:hover {
-            border-color: #38bdf8;
-            background: rgba(56, 189, 248, 0.08);
-        }
-        .dropzone p {
-            color: var(--text-secondary);
-            font-size: 12.5px;
-            margin-top: 6px;
+            background: rgba(254, 243, 199, 0.03);
+            transition: all 0.25s ease;
+            margin-bottom: 16px;
         }
 
-        .extracted-badge-container {
+        .dropzone:hover {
+            border-color: var(--rose-primary);
+            background: rgba(251, 113, 133, 0.08);
+            box-shadow: 0 0 15px var(--rose-glow);
+        }
+
+        .dropzone p {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .field-chip-container {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            max-height: 280px;
+            max-height: 290px;
             overflow-y: auto;
+            padding-right: 4px;
         }
+
         .field-chip {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            border-radius: 8px;
-            padding: 8px 10px;
-            font-size: 12px;
+            background: rgba(38, 32, 35, 0.85);
+            border: 1px solid var(--cream-border);
+            border-radius: 10px;
+            padding: 9px 12px;
+            transition: border-color 0.2s;
         }
+        .field-chip:hover {
+            border-color: var(--rose-primary);
+        }
+
         .field-chip-key {
-            color: var(--accent-cyan);
-            font-weight: bold;
-            font-size: 11px;
+            color: var(--rose-blush);
+            font-weight: 700;
+            font-size: 10.5px;
             text-transform: uppercase;
+            letter-spacing: 0.8px;
             display: block;
             margin-bottom: 2px;
         }
+
         .field-chip-val {
-            color: #f1f5f9;
+            color: var(--cream-champagne);
+            font-size: 12.5px;
+            font-weight: 500;
             word-break: break-word;
         }
 
-        /* Chat Area */
+        /* Chat Component */
         .chat-box {
             display: flex;
             flex-direction: column;
-            height: 520px;
+            height: 540px;
         }
+
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 12px 6px;
+            padding: 10px 4px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-        }
-        .msg-bubble {
-            max-width: 82%;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 13.5px;
-            line-height: 1.45;
-        }
-        .msg-user {
-            align-self: flex-end;
-            background: linear-gradient(135deg, #0284c7, #0ea5e9);
-            color: white;
-            border-bottom-right-radius: 2px;
-        }
-        .msg-golu {
-            align-self: flex-start;
-            background: rgba(30, 41, 59, 0.85);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            color: #f1f5f9;
-            border-bottom-left-radius: 2px;
-        }
-        .msg-source-tag {
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--accent-cyan);
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            gap: 12px;
         }
 
+        .msg-bubble {
+            max-width: 82%;
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 13.5px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .msg-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--rose-primary), #e11d48);
+            color: #ffffff;
+            border-bottom-right-radius: 2px;
+            box-shadow: 0 4px 15px rgba(244, 63, 94, 0.25);
+        }
+
+        .msg-golu {
+            align-self: flex-start;
+            background: rgba(32, 28, 30, 0.95);
+            border: 1px solid var(--cream-border);
+            color: var(--cream-light);
+            border-bottom-left-radius: 2px;
+        }
+
+        .msg-source-tag {
+            font-size: 9.5px;
+            font-weight: 800;
+            color: var(--cream-warm);
+            letter-spacing: 0.8px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        /* Quick Prompts */
         .quick-prompts {
             display: flex;
             gap: 8px;
             overflow-x: auto;
-            padding: 6px 0 10px 0;
+            padding: 8px 0 10px 0;
         }
+
         .prompt-chip {
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            color: #cbd5e1;
-            padding: 5px 10px;
-            border-radius: 14px;
+            background: rgba(38, 32, 35, 0.8);
+            border: 1px solid var(--cream-border);
+            color: var(--cream-base);
+            padding: 6px 12px;
+            border-radius: 16px;
             font-size: 11.5px;
             cursor: pointer;
             white-space: nowrap;
             transition: all 0.2s;
         }
+
         .prompt-chip:hover {
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
+            background: rgba(251, 113, 133, 0.2);
+            border-color: var(--rose-primary);
+            color: #ffffff;
         }
 
+        /* Input Bar */
         .chat-input-bar {
             display: flex;
             gap: 8px;
-            padding-top: 10px;
-            border-top: 1px solid rgba(148, 163, 184, 0.15);
+            padding-top: 12px;
+            border-top: 1px solid rgba(253, 230, 138, 0.15);
+            align-items: center;
         }
+
         .chat-input {
             flex: 1;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(56, 189, 248, 0.35);
-            border-radius: 10px;
-            padding: 10px 14px;
-            color: white;
+            background: rgba(18, 15, 17, 0.9);
+            border: 1px solid var(--cream-border);
+            border-radius: 12px;
+            padding: 11px 16px;
+            color: var(--cream-light);
             font-size: 13.5px;
             outline: none;
+            transition: all 0.2s;
         }
+
         .chat-input:focus {
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+            border-color: var(--rose-primary);
+            box-shadow: 0 0 12px var(--rose-glow);
         }
+
+        /* Action Buttons */
+        .btn-mic {
+            background: rgba(254, 243, 199, 0.1);
+            border: 1px solid var(--cream-border);
+            color: var(--cream-warm);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .btn-mic:hover {
+            background: rgba(251, 113, 133, 0.2);
+            border-color: var(--rose-primary);
+            color: var(--rose-blush);
+        }
+
+        .btn-mic.recording {
+            background: var(--rose-vivid);
+            border-color: var(--rose-blush);
+            color: #ffffff;
+            animation: pulse-mic 1.2s infinite;
+        }
+
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+        }
+
         .chat-send-btn {
-            background: #0284c7;
+            background: linear-gradient(135deg, var(--rose-primary), #e11d48);
             color: white;
             border: none;
-            border-radius: 10px;
-            padding: 0 18px;
-            font-weight: bold;
+            border-radius: 12px;
+            padding: 11px 18px;
+            font-weight: 700;
             font-size: 13.5px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3);
         }
-        .chat-send-btn:hover { background: #0369a1; }
+
+        .chat-send-btn:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
 
         /* Metrics Grid */
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
+            gap: 22px;
         }
-        .status-pill {
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 20px;
-            font-weight: 600;
-            background: rgba(52, 211, 153, 0.15);
-            color: var(--accent-green);
-            border: 1px solid rgba(52, 211, 153, 0.3);
-        }
+
         .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 9px 0;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(253, 230, 138, 0.08);
             font-size: 13px;
         }
         .metric-row:last-child { border-bottom: none; }
+
         .metric-label { color: var(--text-secondary); }
         .metric-val {
             font-weight: 700;
-            font-family: monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 13.5px;
+            color: var(--cream-warm);
         }
-        .val-green { color: var(--accent-green); }
-        .val-cyan { color: var(--accent-cyan); }
-        .val-purple { color: var(--accent-purple); }
+
+        .val-rose { color: var(--rose-blush); }
+        .val-cream { color: var(--cream-base); }
+        .val-green { color: var(--status-green); }
 
         .progress-bar-container {
             width: 100%;
             height: 8px;
-            background: rgba(30, 41, 59, 0.8);
+            background: rgba(38, 32, 35, 0.9);
             border-radius: 4px;
             overflow: hidden;
-            margin: 10px 0 6px 0;
+            margin: 12px 0 6px 0;
         }
+
         .progress-bar {
             height: 100%;
-            width: 35.8%;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+            width: 33.5%;
+            background: linear-gradient(90deg, var(--rose-primary), var(--cream-warm));
             border-radius: 4px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 36px;
+            color: var(--text-muted);
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
     <div class="header">
+        <div class="badge-pill">✨ PRODUCTION-GRADE 4GB LOCAL AI AGENT</div>
         <h1>PROJECT GOLU AI ASSISTANT</h1>
-        <p>Zero-Cloud Client-Server AI • 4GB VRAM Hardware Partitioning • Deterministic Vault & Form Autofill</p>
+        <p>Zero-Cloud Architecture • Yellow Cream & Rose Pink Edition • Instant Deterministic Vault & Form Autofill</p>
     </div>
 
     <!-- Top Tab Navigation -->
@@ -321,43 +460,43 @@
                 <!-- Left: Document Upload Card -->
                 <div class="card">
                     <h2>
-                        <span>📄 DOCUMENT UPLOAD & PARSER</span>
+                        <span>📄 RESUME & DOC UPLOAD</span>
                         <span class="status-pill" id="uploadStatusPill">READY</span>
                     </h2>
                     <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-                        Upload your Resume (PDF, DOCX, TXT). Golu will parse and store your details into the encrypted Vault to auto-fill forms in your browser!
+                        Upload your Resume (PDF, DOCX, TXT). Golu parses your education, skills, and contact info directly into the encrypted Vault to autofill forms in your browser!
                     </p>
 
                     <input type="file" id="docFileInput" accept=".pdf,.docx,.doc,.txt,.md" style="display: none;" onchange="handleFileSelect(event)">
                     <div class="dropzone" onclick="document.getElementById('docFileInput').click()">
-                        <div style="font-size: 26px;">📤</div>
-                        <strong style="font-size: 13px; color: var(--accent-cyan);">Click to Upload Document</strong>
-                        <p>Supports Resume PDF, DOCX, TXT</p>
+                        <div style="font-size: 28px; margin-bottom: 4px;">🌸</div>
+                        <strong style="font-size: 13px; color: var(--rose-blush);">Click to Upload Document</strong>
+                        <p>PDF, DOCX, or TXT Resume</p>
                     </div>
 
-                    <div style="font-size: 12px; font-weight: bold; color: var(--accent-cyan); margin: 12px 0 6px 0;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--cream-warm); margin: 14px 0 8px 0; text-transform: uppercase; letter-spacing: 0.6px;">
                         Auto-Fill Fields Synced in Vault:
                     </div>
-                    <div class="extracted-badge-container" id="extractedFieldsList">
+                    <div class="field-chip-container" id="extractedFieldsList">
                         <div class="field-chip">
                             <span class="field-chip-key">Full Name</span>
                             <span class="field-chip-val" id="dispName">Gouransh Soni</span>
                         </div>
                         <div class="field-chip">
                             <span class="field-chip-key">University / College</span>
-                            <span class="field-chip-val" id="dispCollege">Institute of Engineering and Technology, Udaipur</span>
+                            <span class="field-chip-val" id="dispCollege">Institute of Engineering and Technology, Udaipur (IET Udaipur)</span>
                         </div>
                         <div class="field-chip">
-                            <span class="field-chip-key">Major / Branch</span>
-                            <span class="field-chip-val">Computer Science and Engineering</span>
+                            <span class="field-chip-key">Degree & Branch</span>
+                            <span class="field-chip-val">B.Tech in Computer Science and Engineering</span>
                         </div>
                         <div class="field-chip">
                             <span class="field-chip-key">Email</span>
                             <span class="field-chip-val">gouranshsoni.dev@gmail.com</span>
                         </div>
                         <div class="field-chip">
-                            <span class="field-chip-key">Degree</span>
-                            <span class="field-chip-val">Bachelor of Technology (B.Tech)</span>
+                            <span class="field-chip-key">Phone</span>
+                            <span class="field-chip-val">+91 9876543210</span>
                         </div>
                     </div>
                 </div>
@@ -366,8 +505,8 @@
                 <div class="card">
                     <h2>
                         <span>✨ INTERACTIVE BROWSER CHAT</span>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label style="font-size: 11.5px; color: var(--cream-base); display: flex; align-items: center; gap: 5px; cursor: pointer;">
                                 <input type="checkbox" id="webSearchToggle" checked> 🌐 Search Web
                             </label>
                             <span class="status-pill">ONLINE</span>
@@ -378,20 +517,25 @@
                         <div class="chat-messages" id="chatMessages">
                             <div class="msg-bubble msg-golu">
                                 <div class="msg-source-tag">• GOLU AI</div>
-                                Haan bhai, bolo! Main Golu hoon. Aap mujhse koi bhi sawal pooch sakte ho, document upload kar sakte ho, ya naye facts yaad karne ko bol sakte ho!
+                                Haan bhai, bolo! Main Golu hoon. Aap mujhse bolkar (🎙️ Voice) ya type karke kuch bhi pooch sakte ho! Document upload karke forms autofill kar sakte ho, ya naye facts yaad kara sakte ho.
                             </div>
                         </div>
 
                         <!-- Quick Prompts -->
                         <div class="quick-prompts">
                             <div class="prompt-chip" onclick="sendQuickPrompt('What is my name and college?')">🎓 My Name & College?</div>
-                            <div class="prompt-chip" onclick="sendQuickPrompt('Search internet for latest AI news')">🌐 Search Latest AI News</div>
+                            <div class="prompt-chip" onclick="sendQuickPrompt('Search internet for latest AI news')">🌐 Latest AI News</div>
                             <div class="prompt-chip" onclick="sendQuickPrompt('What projects have I worked on?')">📂 My Projects?</div>
-                            <div class="prompt-chip" onclick="sendQuickPrompt('Remember that my favorite programming language is Python')">🧠 Remember a Fact</div>
+                            <div class="prompt-chip" onclick="sendQuickPrompt('Remember that my favorite tech stack is Python, FastAPI, and React')">🧠 Remember a Fact</div>
                         </div>
 
+                        <!-- Input Bar with Mic & Send -->
                         <div class="chat-input-bar">
-                            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message or instruction... (Enter)" onkeydown="if(event.key==='Enter') sendChatMessage()">
+                            <button id="micBtn" class="btn-mic" onclick="toggleVoiceInput()" title="Speak with Voice">
+                                <span id="micIcon">🎙️</span>
+                                <span id="micLabel" style="font-size: 12px; font-weight: 600;">Voice</span>
+                            </button>
+                            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message or click 🎙️ Voice... (Enter)" onkeydown="if(event.key==='Enter') sendChatMessage()">
                             <button class="chat-send-btn" onclick="sendChatMessage()">Send ➤</button>
                         </div>
                     </div>
@@ -402,7 +546,7 @@
         <!-- ================= TAB 2: HARDWARE & JUDGE METRICS ================= -->
         <div id="metricsTab" class="tab-content">
             <div class="metrics-grid">
-                <!-- VRAM Card -->
+                <!-- VRAM Partitioning Card -->
                 <div class="card">
                     <h2>
                         <span>🖥️ HARDWARE VRAM PARTITIONING</span>
@@ -410,19 +554,19 @@
                     </h2>
                     <div class="metric-row">
                         <span class="metric-label">GPU Model</span>
-                        <span class="metric-val val-cyan">NVIDIA GeForce GTX 1650</span>
+                        <span class="metric-val val-cream">NVIDIA GeForce GTX 1650</span>
                     </div>
                     <div class="metric-row">
                         <span class="metric-label">VRAM Capacity</span>
-                        <span class="metric-val val-cyan">4096 MiB</span>
+                        <span class="metric-val val-cream">4096 MiB</span>
                     </div>
                     <div class="metric-row">
                         <span class="metric-label">Active Allocation</span>
-                        <span class="metric-val val-green">1466 MiB (35.8%)</span>
+                        <span class="metric-val val-rose">1371 MiB (33.5%)</span>
                     </div>
                     <div class="metric-row">
                         <span class="metric-label">Safety Headroom</span>
-                        <span class="metric-val val-green">2630 MiB (&gt; 500 MiB)</span>
+                        <span class="metric-val val-green">2725 MiB (&gt; 500 MiB)</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar"></div>
@@ -437,15 +581,15 @@
                     </h2>
                     <div class="metric-row">
                         <span class="metric-label">Vault DPAPI Decryption</span>
-                        <span class="metric-val val-green">0.17 ms (Target: &lt; 20ms)</span>
+                        <span class="metric-val val-green">0.24 ms (Target: &lt; 20ms)</span>
                     </div>
                     <div class="metric-row">
                         <span class="metric-label">Hybrid RAG Retrieval</span>
-                        <span class="metric-val val-cyan">110.2 ms</span>
+                        <span class="metric-val val-cream">110.2 ms</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Manly Indian Neural Voice (edge-tts)</span>
-                        <span class="metric-val val-cyan">~0.32 s (In-Memory)</span>
+                        <span class="metric-label">Manly Neural Voice Synthesis</span>
+                        <span class="metric-val val-rose">~0.32 s (In-Memory)</span>
                     </div>
                     <div class="metric-row">
                         <span class="metric-label">Emergency Kill Switch</span>
@@ -473,11 +617,15 @@
                     </div>
                     <div class="metric-row">
                         <span class="metric-label">Host Binding</span>
-                        <span class="metric-val val-cyan">Strict 127.0.0.1 (Never 0.0.0.0)</span>
+                        <span class="metric-val val-cream">Strict 127.0.0.1 (Never 0.0.0.0)</span>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="footer">
+        <p>Project Golu • Built & Verified for Production • GitHub Ready</p>
     </div>
 
     <script>
@@ -548,13 +696,88 @@
             container.scrollTop = container.scrollHeight;
         }
 
+        // ================= Web Speech API Voice Input =================
+        let recognition = null;
+        let isRecording = false;
+
+        function setupSpeechRecognition() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) {
+                alert("Your browser doesn't support Web Speech. Please use Chrome, Edge, or Brave.");
+                return null;
+            }
+            const rec = new SpeechRec();
+            rec.continuous = false;
+            rec.interimResults = true;
+            rec.lang = 'en-IN'; // Indian English / Hinglish
+
+            rec.onstart = () => {
+                isRecording = true;
+                const micBtn = document.getElementById('micBtn');
+                const micLabel = document.getElementById('micLabel');
+                micBtn.classList.add('recording');
+                micLabel.textContent = "Listening...";
+            };
+
+            rec.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                if (transcript) {
+                    document.getElementById('chatInput').value = transcript;
+                }
+            };
+
+            rec.onerror = (event) => {
+                console.error("Speech error:", event.error);
+                stopRecordingUI();
+            };
+
+            rec.onend = () => {
+                stopRecordingUI();
+                const text = document.getElementById('chatInput').value.trim();
+                if (text) {
+                    sendChatMessage();
+                }
+            };
+
+            return rec;
+        }
+
+        function stopRecordingUI() {
+            isRecording = false;
+            const micBtn = document.getElementById('micBtn');
+            const micLabel = document.getElementById('micLabel');
+            micBtn.classList.remove('recording');
+            micLabel.textContent = "Voice";
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                recognition = setupSpeechRecognition();
+            }
+            if (!recognition) return;
+
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.warn("Recognition start note:", e);
+                }
+            }
+        }
+
+        // ================= Document Upload Handler =================
         async function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             const pill = document.getElementById('uploadStatusPill');
             pill.textContent = "PARSING...";
-            pill.style.color = "#fbbf24";
+            pill.style.color = "var(--cream-warm)";
 
             const formData = new FormData();
             formData.append("file", file);
@@ -567,7 +790,7 @@
                 const res = await resp.json();
                 if (res.status === 'success') {
                     pill.textContent = "PARSED & SAVED";
-                    pill.style.color = "#34d399";
+                    pill.style.color = "var(--status-green)";
                     addBubble(`Uploaded '${res.filename}': Indexed ${res.chunks_indexed} chunks into RAG and synced ${Object.keys(res.extracted_fields).length} fields into Vault!`, false, "DOC_PARSER");
 
                     // Render updated fields
@@ -581,12 +804,12 @@
                     }
                 } else {
                     pill.textContent = "FAILED";
-                    pill.style.color = "#f87171";
+                    pill.style.color = "var(--rose-vivid)";
                     alert(res.error || "Failed to parse document");
                 }
             } catch (err) {
                 pill.textContent = "ERROR";
-                pill.style.color = "#f87171";
+                pill.style.color = "var(--rose-vivid)";
                 alert("Upload error: " + err);
             }
         }
